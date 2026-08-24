@@ -1,6 +1,6 @@
 # 斗魂构筑实验室
 
-状态：需求调研与架构设计中。
+状态：静态数据与本地内容库已可构建。
 
 ## 已确认目标
 
@@ -24,10 +24,11 @@
 - Riot Data Dragon：英雄、技能和地图 30 装备。
 - CommunityDragon：斗魂强化的中文名称、说明、图标路径和参数。
 
-同步结果统一写入 `data/normalized/<版本>/`，业务代码只读取标准化文件。
+同步结果统一写入 `data/normalized/<版本>/`，再构建为应用直接查询的 SQLite 内容库。
 
 ```bash
 python3 scripts/sync_data.py
+python3 scripts/build_database.py
 python3 -m unittest discover -s tests -v
 ```
 
@@ -35,6 +36,16 @@ python3 -m unittest discover -s tests -v
 
 ```bash
 python3 scripts/sync_data.py --patch 16.16.1
+python3 scripts/build_database.py --patch 16.16.1
 ```
 
-当前快照包含全部英雄摘要、剑魔与诺手技能详情、斗魂装备目录，以及全部斗魂强化。详细来源、结构和限制见 `docs/data-foundation.md`。
+生成结果位于 `dist/arena-content-16.16.1.db`。该文件是可重新生成的运行产物，不提交到 Git。
+
+快速查询：
+
+```bash
+sqlite3 -header -column dist/arena-content-16.16.1.db \
+  "SELECT id, name, title FROM champions WHERE id IN ('Aatrox', 'Darius');"
+```
+
+当前快照包含全部英雄摘要、剑魔与诺手技能详情、斗魂装备目录，以及全部斗魂强化。详细来源与字段见 `docs/data-foundation.md`，存储分层见 `docs/storage-design.md`。

@@ -1,4 +1,6 @@
 data/raw/
+dist/*.db
+dist/*.db-*
 __pycache__/
 *.pyc
 
