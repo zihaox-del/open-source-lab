@@ -1,0 +1,21 @@
+{
+  "files": [
+    "champions.json",
+    "items-arena.json",
+    "augments.json"
+  ],
+  "gamePatch": "16.16.1",
+  "generatedAt": "2026-08-24T03:38:58.460918+00:00",
+  "locale": "zh_CN",
+  "recordCounts": {
+    "augments": 225,
+    "champions": 173,
+    "itemsArenaCatalog": 231,
+    "itemsArenaPurchasable": 187
+  },
+  "schemaVersion": 1,
+  "versionIndex": {
+    "sha256": "c2eede780ca5a85ab58877fcadcd6af3b43bafaddc4f6169840c18142e5ac382",
+    "url": "https://ddragon.leagueoflegends.com/api/versions.json"
+  }
+}

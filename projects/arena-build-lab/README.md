@@ -15,4 +15,26 @@
 
 ## 当前阶段
 
-下一步先调研游戏画面获取、界面识别、上下文建模和桌面交互方案，再确定技术架构与 `v0.1.0` 范围。
+静态数据底座已经进入实现阶段。当前先固定英雄、斗魂装备和强化的数据同步、标准化及版本校验，再处理 Windows 游戏画面获取。
+
+## 数据底座
+
+当前数据来源：
+
+- Riot Data Dragon：英雄、技能和地图 30 装备。
+- CommunityDragon：斗魂强化的中文名称、说明、图标路径和参数。
+
+同步结果统一写入 `data/normalized/<版本>/`，业务代码只读取标准化文件。
+
+```bash
+python3 scripts/sync_data.py
+python3 -m unittest discover -s tests -v
+```
+
+指定版本：
+
+```bash
+python3 scripts/sync_data.py --patch 16.16.1
+```
+
+当前快照包含全部英雄摘要、剑魔与诺手技能详情、斗魂装备目录，以及全部斗魂强化。详细来源、结构和限制见 `docs/data-foundation.md`。
