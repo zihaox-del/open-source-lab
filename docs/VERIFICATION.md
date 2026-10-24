@@ -1,8 +1,19 @@
-# v0.4.0 qualification pending
+# v0.4.0 qualification · 2026-10-24
 
-Current source adds explicit up-to-three-page first/middle/last review and failed-only child drafts. The API binds successful review receipts to exact URL/field/engine/parent configuration. A completed parent is checked again transactionally when a child is created. Only failed rows are copied; original rows and exports remain unchanged.
+Qualified source: `47461007effbcc21f83cac405b86003bd41720c8`.
 
-Local Python 3.12: 84 tests ran, 76 passed and 8 browser cases explicitly skipped; compileall, JavaScript syntax checking and the 30-page offline demo passed. Native-package smoke now requires exact source/packaged version and HTML equality. Current native builds remain pending. The real Chromium attempt in this sandbox is blocked at socket creation (`Operation not permitted`), before DOM tests run. New desktop/narrow comparison and retry screenshots must be produced and inspected in actual CI. No v0.4 remote or Windows pass is claimed yet. Historical links, hashes and screenshots below are explicitly older-version evidence, not qualification of the current source.
+- [Tests and real Chromium](https://github.com/zihaox-del/open-source-lab/actions/runs/40056806191): 86 tests passed, no skips in Chromium job 120761466231. Python 3.11–3.13 offline jobs each passed 78 with 8 explicit browser skips.
+- The same run's bounded public-practice job passed three fixed ToScrape book pages using production pinned HTTPS transport, at most four requests including robots. This is invited external fixture evidence, not customer adoption.
+- [Native Windows and Linux](https://github.com/zihaox-del/open-source-lab/actions/runs/40056806202): both builds passed actual extracted-ZIP executable smoke with isolated PATH/data/cwd, exact source version and HTML equality, successful three-page review, 30 synthetic rows, CSV/XLSX downloads, occupied-port and second-instance rejection, graceful shutdown and restart.
+- Initial CI caught a versioned-health contract regression in launcher/smoke. Both now check the exact current-version health response; an integration regression uses the actual API response and rejects old versions.
+- Initial retry fixture incorrectly left another `span`, so a bare-tag rule legitimately matched a different value. The corrected failure fixture removes that tag, and a regression derives the real generated selector and proves extraction fails before repair. Expected two-success/one-failure checks were retained. Semantic-mismatch examples remain, not hidden by the fixture correction.
+- Actual desktop comparison and 390px retry-result screenshots were visually inspected: readable controls, explicit semantic-counterexample value and parent link, without obscured confirmation controls in these captured states. Synthetic `REPAIRED-96` is only a rule-repair marker, not a validated price. No all-viewport or accessibility certification.
+- Review selects actual first/middle/last URLs, deduplicated and at most three. It does not verify meaning or guarantee unsampled rows. Bare-tag as well as positional selectors can uniquely match semantically wrong values.
+- Failed-only drafts require a completed parent with failures. Review receipts bind URL/field/engine/parent configuration, rechecked transactionally. Original rows/exports remain unchanged. Legacy SQLite data and request identities remain compatible.
+
+Local browser startup remains blocked by sandbox socket restrictions; no local DOM pass is claimed. No live paid model, keys, private user data, macOS binary or universal accessibility claim.
+
+Historical records below describe older versions and are not substitutes for the v0.4 evidence above.
 
 # Verification record · 2026-10-24
 
