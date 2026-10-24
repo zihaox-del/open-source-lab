@@ -22,7 +22,7 @@ v0.3.1 早期可运行版本，不是“万能浏览器代理”。适合整理�
 
 ## 普通用户：免 Python 便携包（Windows / Linux）
 
-Windows x64 和 Linux x86_64 已通过原生构建及**实际 ZIP 解压后的可执行文件验收**，不需要安装 Python。下载 [已验证的构建产物](https://github.com/zihaox-del/open-source-lab/actions/runs/40052433273)；它们是早期试用包，尚未代码签名，不是正式稳定发行版。macOS 便携包暂未提供。
+Windows x64 和 Linux x86_64 已通过原生构建及**实际 ZIP 解压后的可执行文件验收**，不需要安装 Python。下载 [已验证的构建产物](https://github.com/zihaox-del/open-source-lab/actions/runs/40054296200)；它们是早期试用包，尚未代码签名，不是正式稳定发行版。macOS 便携包暂未提供。
 
 1. 在上述成功运行页面下载 `websheet-agent-Windows-X64` 或 `websheet-agent-Linux-X64`（Actions 下载通常需要登录 GitHub；产物保留 14 天）。下载物是外层产物 ZIP，先解压得到应用 ZIP 和同名 `.sha256`，再完整解压应用 ZIP。
 2. 完整解压 ZIP 到自己可读的位置，不要直接在压缩软件里运行，也不要只复制 `.exe`。
@@ -135,14 +135,14 @@ WebSheet Agent is an original, local-first MVP for reviewed static-page extracti
 
 [测试流水线](https://github.com/zihaox-del/open-source-lab/actions/runs/40052433129) 的真实 Chromium 作业 **59 项测试全部通过，零跳过**；Python 3.11–3.13 离线作业也通过（54 通过、5 项浏览器测试明确跳过）。四项真实仪表盘流程覆盖三步上手、自动样表、重复点击、刷新、暂停/继续、历史、实际下载、读取失败/无候选以及迟到的异步结果。
 
-[Windows/Linux 打包验收](https://github.com/zihaox-del/open-source-lab/actions/runs/40052433273) 实际运行 ZIP 解压后的程序，验证不依赖 PATH 中的 Python、30 条合成采集、两种导出、端口冲突拒绝、正常停止和重启恢复。下载包的 SHA256、界面源码和实际原生依赖声明已核对。
+[Windows/Linux 打包验收](https://github.com/zihaox-del/open-source-lab/actions/runs/40054296200) 实际运行 ZIP 解压后的程序，验证不依赖 PATH 中的 Python、30 条合成采集、两种导出、端口冲突拒绝、正常停止和重启恢复。下载包的 SHA256、界面源码和实际原生依赖声明已核对。
 
 桌面及 390px 窄屏的输入、点选、完成/部分失败状态截图已审阅，未见阻挡主要操作的重叠或裁切；宽表格需要横向滚动，不代表所有设备或无障碍验收。未验证真实网站兼容性、付费模型、macOS 或所有 Windows 版本。无需模型 Key。详见 [验证记录](docs/VERIFICATION.md)。
 
-## v0.3.1 静态页面可靠性（本次远程验收待完成）
+## v0.3.1 静态页面可靠性（已通过远程验收）
 
-新增严格字符编码处理、完整标题候选、明确隐藏内容过滤、非导航候选优先、候选/链接截断提示以及安全的同源 base 链接解析。本机 74 项测试中 68 通过、6 项真实浏览器测试明确跳过；旧版已验证下载包仍是 v0.3.0，不代表本次包通过。
+新增严格字符编码处理、完整标题候选、明确隐藏内容过滤、非导航候选优先、候选/链接截断提示以及安全的同源 base 链接解析。[本次测试流水线](https://github.com/zihaox-del/open-source-lab/actions/runs/40054296216) 的真实 Chromium 作业 **74 项全部通过、零跳过**；Python 3.11–3.13 离线作业 68 通过、6 项浏览器测试明确跳过。Windows/Linux v0.3.1 实际 ZIP 解压后可执行程序的构建和烟雾验收也通过；本机浏览器仍受 socket 限制，不能将远程通过称作本机通过。
 
-另增加显式授权的联网验收：`python scripts/public_smoke.py --project . --allow-public-network`。目标仅为 [ToScrape 官方邀请测试的练习书店](https://toscrape.com/)；最多一次 robots.txt 和三个固定详情页请求，间隔至少两秒，无重试、翻页或绕过。使用生产 HTTPS/DNS 固定连接和提取代码，期望值变化会失败并要求人工检查。默认不提供该参数时不会联网；CI 仅 push 事件显式运行，非定时爬虫。这是外部练习页面，不是真实客户采用或通用网站兼容性的证据，当前本机 DNS 仍受限，完整远程结果待验证。
+另增加显式授权的联网验收：`python scripts/public_smoke.py --project . --allow-public-network`。目标仅为 [ToScrape 官方邀请测试的练习书店](https://toscrape.com/)；最多一次 robots.txt 和三个固定详情页请求，间隔至少两秒，无重试、翻页或绕过。使用生产 HTTPS/DNS 固定连接和提取代码，期望值变化会失败并要求人工检查。默认不提供该参数时不会联网；CI 仅 push 事件显式运行，非定时爬虫。这是外部练习页面，不是真实客户采用或通用网站兼容性的证据，当前本机 DNS 仍受限，但 [远程生产传输验收](https://github.com/zihaox-del/open-source-lab/actions/runs/40054296216/job/120753721579) 已实际通过三个固定页面，标题、价格和 UPC 均与预先核对值完全一致。
 
 位置规则即使唯一匹配也可能在页面结构变化后读到错误值；本版保留了真实反例测试，尚未实现多页语义校验。批量前核对样表，完成后抽查，不把“成功”状态当作字段含义正确的保证。

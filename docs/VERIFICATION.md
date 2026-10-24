@@ -2,16 +2,28 @@
 
 This record describes actual execution, not planned coverage.
 
-## Static reliability follow-up (local, awaiting new CI)
+## v0.3.1 static reliability: remotely verified
 
+Qualified v0.3.1 source: `fd2aa4af726f12958d5215dab3b895bb470efc6d`.
+[Tests/browser/public fixture](https://github.com/zihaox-del/open-source-lab/actions/runs/40054296216) and [native Windows/Linux packages](https://github.com/zihaox-del/open-source-lab/actions/runs/40054296200) both passed.
+
+- Real Chromium: **74 tests passed, zero skips**, including the new fifth dashboard flow. Python 3.11–3.13 offline jobs: 68 passed, 6 browser tests explicitly skipped. Windows and Linux actual ZIP-extracted executable smoke tests passed for this source, not just an older binary.
 - Local Python 3.12: 74 discovered tests, 68 passed, 6 browser tests explicitly skipped. Compile, JavaScript syntax check and 30-page offline XLSX demo passed.
 - 14 new offline regression tests cover real `fetch` control flow with mocked HTTP bytes/headers: UTF-8 Chinese, GB18030/GBK, Windows-1252, HTTP-over-meta precedence, BOM/meta/UTF-8 fallback, XHTML declaration, malformed/unsupported encoding and invalid bytes. They do not prove arbitrary-site compatibility or detect every incorrect-but-decodable charset declaration.
 - Candidate tests cover complete inline headings, explicit inline hidden ancestors, navigation starvation, the 100-result/5,000-element inspection limits, API metadata, same-origin base resolution, fragment deduplication, cross-origin base rejection and exact link-limit behavior. Selector uniqueness still does not prove semantic correctness: an explicit index-drift counterexample returns the wrong value and is retained as a regression demonstrating the limitation.
 - Added a fifth dashboard flow for visible actionable candidate/link truncation hints, nested-heading preview and clearing the warning on a new sample. It uses an explicitly synthetic HTML response, not a live website.
-- Opt-in local real-Chromium execution was attempted and failed at browser startup with `socket() failed: Operation not permitted`; both renderer and dashboard setup errored. The new dashboard test has NOT passed locally. Existing historical browser/portable CI results below do not validate these new changes; new CI remains required before claiming those passes.
+- Opt-in local real-Chromium execution was attempted and failed at browser startup with `socket() failed: Operation not permitted`; both renderer and dashboard setup errored. The new dashboard test has NOT passed locally. The newly linked v0.3.1 remote run subsequently passed; that does not turn the local launch failure into a local pass. Earlier sections below remain historical evidence for their own source versions.
 - No new paid model call, private data, redirect/compression support, failure-retry UI or multi-page preview was added. Portable packaging sources and OS-specific locking were unchanged.
 
-## v0.3 verified source and workflows
+### Bounded external practice fixture
+
+The separate opt-in public-fixture job passed all three fixed `books.toscrape.com` pages through the production public-DNS-pinned HTTPS fetcher and extraction code. Exact results matched the previously reviewed titles, prices and UPCs in `tests/fixtures/public_cases.json`. [Observed job](https://github.com/zihaox-del/open-source-lab/actions/runs/40054296216/job/120753721579).
+
+The [official sandbox](https://toscrape.com/) explicitly invites developer scraping tests. Each run is capped at one robots preflight plus three detail requests, at least two seconds apart; there are no retries, cookies, proxies, JavaScript or crawling. The robots step stops on disallow/unexpected/compressed/oversized content; 404 means no published robots file, combined with the separate explicit invitation. Any expectation drift fails for manual review, never silent rebaselining. Local DNS remained blocked; this observed pass was on GitHub's runner.
+
+This closes a limited external-transport fixture gap, not customer adoption, real-world product value or arbitrary-site correctness. The three expected prices are sandbox data, not commercial prices. Positional rules can still return semantically wrong values after page changes; the explicit counterexample test remains and multi-page semantic preview is still deferred.
+
+## Historical v0.3 verified source and workflows
 
 Qualified source: `aee7e1ea1ddfa846b40c5f1715d7e9d41be26e23`.
 
@@ -53,7 +65,7 @@ This is acceptance of those captured synthetic states, not all viewports, real-s
 
 ## Remaining limitations
 
-- Public extraction supports authorized static HTTPS pages only. A previous local example.com attempt could not resolve DNS. CI validates synthetic pages/mocks, not arbitrary public sites or live website compatibility.
+- Public extraction supports authorized static HTTPS pages only. A previous local example.com attempt could not resolve DNS. Most CI checks use synthetic pages/mocks; the v0.3.1 job above additionally covers three invited public practice pages, not arbitrary sites or customer websites.
 - Public JavaScript pages, logins, CAPTCHA bypass and hosted multi-user service are unsupported. Optional browser-demo is source-only and restricted to bundled synthetic content.
 - Paid DeepSeek responses/billing, macOS, WSL and all Windows/Linux device variants are unverified. The Windows runner pass is not evidence for every Windows version.
 - There is no independent penetration test, full accessibility audit, code signing or automatic updating. Dependencies are pinned directly, not a complete transitive reproducibility lock.

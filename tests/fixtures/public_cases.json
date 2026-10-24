@@ -53,5 +53,5 @@
     "transport": "Unmodified websheet.core.fetch; HTTPS, public pinned DNS, no redirects, cookies, JS or compressed responses",
     "drift": "Exact expectations are observed fixture values, not real prices or permanent guarantees. Mismatch requires manual classification and review, never silent rebaseline."
   },
-  "verification_limit": "Expected values verified from current official pages and raw public HTML through research transport; current core.fetch cannot resolve DNS in this environment. Full production-transport pass is pending."
+  "verification_limit": "Production core.fetch/extract passed all three fixed cases on GitHub Actions run 40054296216, job 120753721579, at source fd2aa4af726f12958d5215dab3b895bb470efc6d. Local DNS remains blocked. External practice fixtures are not customer adoption or arbitrary-site compatibility."
 }
