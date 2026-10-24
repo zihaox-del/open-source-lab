@@ -1,8 +1,8 @@
 # 网页搬表 · WebSheet Agent
 
-**把同类详情页变成可追溯的表格。先检查一条，再确定性批量执行。**
+**把同类详情页变成可追溯的表格。先抽查所选页面，再确定性批量执行。**
 
-v0.3.1 早期可运行版本，不是“万能浏览器代理”。适合整理有权访问的公开静态目录、公告或资料详情页；不适合登录后页面、复杂交互、反爬绕过或任意网站自动操作。
+v0.4.0 开发版（本次远程验收待完成），不是“万能浏览器代理”。适合整理有权访问的公开静态目录、公告或资料详情页；不适合登录后页面、复杂交互、反爬绕过或任意网站自动操作。
 
 ## 为什么做这个
 
@@ -22,7 +22,7 @@ v0.3.1 早期可运行版本，不是“万能浏览器代理”。适合整理�
 
 ## 普通用户：免 Python 便携包（Windows / Linux）
 
-Windows x64 和 Linux x86_64 已通过原生构建及**实际 ZIP 解压后的可执行文件验收**，不需要安装 Python。下载 [已验证的构建产物](https://github.com/zihaox-del/open-source-lab/actions/runs/40054296200)；它们是早期试用包，尚未代码签名，不是正式稳定发行版。macOS 便携包暂未提供。
+以下链接是 v0.3.1 历史构建，并非当前 v0.4.0。v0.4.0 必须等待同一源码版本的 Windows/Linux 构建与验收后再下载。Windows x64 和 Linux x86_64 的 v0.3.1 已通过原生构建及**实际 ZIP 解压后的可执行文件验收**，不需要安装 Python。下载 [已验证的构建产物](https://github.com/zihaox-del/open-source-lab/actions/runs/40054296200)；它们是早期试用包，尚未代码签名，不是正式稳定发行版。macOS 便携包暂未提供。
 
 1. 在上述成功运行页面下载 `websheet-agent-Windows-X64` 或 `websheet-agent-Linux-X64`（Actions 下载通常需要登录 GitHub；产物保留 14 天）。下载物是外层产物 ZIP，先解压得到应用 ZIP 和同名 `.sha256`，再完整解压应用 ZIP。
 2. 完整解压 ZIP 到自己可读的位置，不要直接在压缩软件里运行，也不要只复制 `.exe`。
@@ -51,10 +51,10 @@ python -m websheet
 ### 第一次使用：无需 CSS、无需 API Key
 
 1. 点击“先试试演示”，自动读取第一条合成页面，进入内容选择。共 **30 个纯合成页面**，不访问真实商品网站。
-2. 选择“合成示例商品 01”和“13.00”等内容，把默认“列1”“列2”改成你需要的名称，例如“名称”“价格”。系统自动验证真实样本，生成样表，不替你猜字段含义。
-3. 检查样表后，点击“确认样表，开始整理 30 页”。这是明确开始批量执行的唯一确认，不需要另找预览按钮或确认复选框。
+2. 选择“合成示例商品 01”和“13.00”等内容，把默认“列1”“列2”改成你需要的名称，例如“名称”“价格”。选择后点击「抽查所选页面」，按实际网址顺序读取首、中、末页（去重，最多 3 页），显示每页真实值或错误，不替你猜字段含义。
+3. 逐页检查抽查值及来源后，点击「已逐页核对，开始整理 30 页」。修改网址、字段或引擎后必须重新抽查；抽查错误会阻止开始。抽查按钮只在你点击时读取，不随输入反复联网。
 4. 任务在后台逐页运行，界面显示完成计数。可以刷新、查看历史，或暂停；暂停会等待当前页读取结束。成功和失败行不自动重复运行。
-5. 完成后点击“下载 Excel”或“下载 CSV”，然后可“整理另一组网页”。导出包括所有状态，请检查失败计数；失败行会附原因。旧任务从“查看本机历史任务”找回。
+5. 完成后点击“下载 Excel”或“下载 CSV”，然后可“整理另一组网页”。导出包括所有状态，请检查失败计数；失败行会附原因。旧任务从“查看本机历史任务”找回。已完成且有失败页的任务可点「只用失败页新建草稿」，复制失败网址和原规则，修改规则后重新抽查并确认。不会自动重试、重跑成功页或覆盖原结果；待处理页不是失败页。父子任务可互相查看，下载始终来自当前任务快照。
 
 ### 换成自己的公开静态页面
 
@@ -112,6 +112,12 @@ python -m websheet
 - 浏览器演示绝不读取用户提供的 HTML，也不导航公网 URL；只运行源代码中固定的合成页面脚本。
 - 依赖清单锁定直接依赖，**不是完整可复现的传递依赖锁文件**；暂未进行第三方独立渗透测试。
 
+## v0.4 API 兼容性
+
+新任务创建先 POST `/api/review`（`urls`、`fields`、`engine`，失败页草稿另带 `parent_job_id`），检查 `samples` 的每页真实值和错误。全部提取成功后返回的 `review_token` 与该配置绑定；POST `/api/jobs` 必须提交它和 `reviewed: true`。修改配置后旧凭据无效。缓存最多保留 200 次成功抽查，过旧草稿需重新抽查。旧版本已创建任务的同一 `request_id` 重发仍只找回原任务，不会重复创建。直接内部 Store 调用仅用于可信源码测试/脚本，不是网页 API。
+
+`GET /api/jobs/{id}/retry-draft` 仅接受已完成且有失败页的任务，返回失败网址、原字段和父任务标识。新子任务可改字段，但不得混入成功/待处理页、改变失败网址集合或引擎；服务端在创建事务内复核。原任务结果与导出不变。
+
 ## 开发与验证
 
 ```bash
@@ -128,7 +134,7 @@ MIT © 2026 zihaox-del and WebSheet Agent contributors。欢迎小范围、可�
 
 ## English summary
 
-WebSheet Agent is an original, local-first MVP for reviewed static-page extraction into traceable CSV/XLSX files. Version 0.3 introduces a three-stage first-use flow with one URL input, text-value selection, automatic sample preview and an explicit start confirmation. Persistent history, bounded same-origin link discovery and cooperative pause/resume remain available. Native Windows x64 and Linux x86_64 portable bundles passed exact-ZIP executable smoke tests without Python on PATH. They are unsigned early test builds, not a signed installer or a guarantee for every machine. Manual selectors and optional DeepSeek suggestions remain available. Duplicate creation requests are idempotent. It is not a universal browser agent. A separate Playwright renderer runs bundled synthetic demos only with page network access disabled; real Chromium rendering of 30 bundled synthetic pages passed in GitHub Actions, and previous-version dashboard tests passed. The redesigned v0.3 dashboard passed four real-browser workflow tests and desktop/390px synthetic-state screenshot review; no full accessibility audit is claimed. Public JavaScript pages, logins, CAPTCHA bypass and hosted multi-user operation are out of scope. Native Windows validation passed on the CI runner; macOS has no portable build. Start with `python -m websheet`; use the 30-page offline demo without any API key.
+WebSheet Agent is an original, local-first MVP for reviewed static-page extraction into traceable CSV/XLSX files. Version 0.4 retains three stages and adds explicit deterministic first/middle/last review of up to three selected URLs, revision-bound confirmation, and failed-only child drafts for completed jobs. Edits require another review; extraction errors block start. Successful extraction does not guarantee semantic correctness. Parent results remain immutable. Current v0.4 CI and native-package qualification are pending; the linked passes below describe older versions. Persistent history, bounded same-origin link discovery and cooperative pause/resume remain available. Native Windows x64 and Linux x86_64 portable bundles passed exact-ZIP executable smoke tests without Python on PATH. They are unsigned early test builds, not a signed installer or a guarantee for every machine. Manual selectors and optional DeepSeek suggestions remain available. Duplicate creation requests are idempotent. It is not a universal browser agent. A separate Playwright renderer runs bundled synthetic demos only with page network access disabled; real Chromium rendering of 30 bundled synthetic pages passed in GitHub Actions, and previous-version dashboard tests passed. The redesigned v0.3 dashboard passed four real-browser workflow tests and desktop/390px synthetic-state screenshot review; no full accessibility audit is claimed. Public JavaScript pages, logins, CAPTCHA bypass and hosted multi-user operation are out of scope. Native Windows validation passed on the CI runner; macOS has no portable build. Start with `python -m websheet`; use the 30-page offline demo without any API key.
 
 
 ## v0.3 验证状态
@@ -145,4 +151,4 @@ WebSheet Agent is an original, local-first MVP for reviewed static-page extracti
 
 另增加显式授权的联网验收：`python scripts/public_smoke.py --project . --allow-public-network`。目标仅为 [ToScrape 官方邀请测试的练习书店](https://toscrape.com/)；最多一次 robots.txt 和三个固定详情页请求，间隔至少两秒，无重试、翻页或绕过。使用生产 HTTPS/DNS 固定连接和提取代码，期望值变化会失败并要求人工检查。默认不提供该参数时不会联网；CI 仅 push 事件显式运行，非定时爬虫。这是外部练习页面，不是真实客户采用或通用网站兼容性的证据，当前本机 DNS 仍受限，但 [远程生产传输验收](https://github.com/zihaox-del/open-source-lab/actions/runs/40054296216/job/120753721579) 已实际通过三个固定页面，标题、价格和 UPC 均与预先核对值完全一致。
 
-位置规则即使唯一匹配也可能在页面结构变化后读到错误值；本版保留了真实反例测试，尚未实现多页语义校验。批量前核对样表，完成后抽查，不把“成功”状态当作字段含义正确的保证。
+位置规则即使唯一匹配也可能在页面结构变化后读到错误值；本版保留了真实反例测试，不会进行多页语义校验或自动修复。v0.4 增加的多页抽查只展示实际提取结果，仍由用户判断含义。批量前核对样表，完成后抽查，不把“成功”状态当作字段含义正确的保证。

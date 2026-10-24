@@ -1,8 +1,10 @@
 from pathlib import Path
+from contextlib import nullcontext
 from typing import Literal
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
+from . import __version__
 from .core import Column, ExtractionError, export_rows, extract, fetch, candidate_report, link_report
 from .store import Store
 from .paths import default_db_path
@@ -40,7 +42,7 @@ def create_app(db_path=None):
 
     @app.get('/api/health')
     def health():
-        return {'status': 'ok', 'app': 'websheet-agent'}
+        return {'status': 'ok', 'app': 'websheet-agent', 'version': __version__}
 
     @app.get('/')
     def index():
@@ -76,6 +78,35 @@ def create_app(db_path=None):
                 return {'source_url': body.url, 'row': extract(render(body.url), body.fields)}
         return {'source_url': body.url, 'row': extract(fetch(body.url), body.fields)}
 
+    @app.post('/api/review')
+    def review(body: Review):
+        config = store.configuration(body.urls, body.fields, body.engine, body.parent_job_id)
+        with store.connect() as db:
+            store._validate_parent(db, config)
+        urls = config['urls']
+        selected = [urls[i] for i in sorted({0, len(urls) // 2, len(urls) - 1})]
+        samples = []
+        if body.engine == 'browser-demo':
+            from .browser import renderer
+            scope = renderer()
+        else:
+            scope = nullcontext(fetch)
+        try:
+            with scope as read:
+                for url in selected:
+                    try:
+                        samples.append(dict(source_url=url, row=extract(read(url), body.fields), error=None))
+                    except Exception as exc:
+                        samples.append(dict(source_url=url, row=None, error=str(exc) if isinstance(exc, ExtractionError) else '读取失败；请检查页面和规则'))
+        except Exception as exc:
+            # Renderer startup failures remain visible failures for every selected source.
+            message = str(exc) if isinstance(exc, ExtractionError) else '无法启动演示渲染器；请检查运行环境'
+            samples = [dict(source_url=url, row=None, error=message) for url in selected]
+        all_ok = all(item['error'] is None for item in samples)
+        positional = any(' > ' in f.selector or ':nth-of-type' in f.selector for f in body.fields)
+        return dict(samples=samples, all_ok=all_ok, positional_warning=positional,
+                    review_token=store.issue_review(config) if all_ok else None)
+
     @app.post('/api/suggest')
     def ai_suggest(body: Suggestion):
         if not body.allow_ai_upload:
@@ -85,7 +116,12 @@ def create_app(db_path=None):
 
     @app.post('/api/jobs')
     def create(body: NewJob):
-        return store.create(body.urls, body.fields, body.reviewed, body.engine, body.request_id)
+        return store.create(body.urls, body.fields, body.reviewed, body.engine, body.request_id,
+                            body.parent_job_id, body.review_token, require_review=True)
+
+    @app.get('/api/jobs/{job_id}/retry-draft')
+    def retry_draft(job_id: str):
+        return store.retry_draft(job_id)
 
     @app.get('/api/jobs/{job_id}')
     def get(job_id: str):
@@ -114,11 +150,15 @@ class Preview(BaseModel):
     url: str = Field(max_length=2048)
     fields: list[Column] = Field(min_length=1, max_length=20)
 
-class NewJob(BaseModel):
-    request_id: str | None = Field(default=None, min_length=1, max_length=80)
+class Review(BaseModel):
     engine: Literal["static", "browser-demo"] = "static"
     urls: list[str] = Field(min_length=1, max_length=100)
     fields: list[Column] = Field(min_length=1, max_length=20)
+    parent_job_id: str | None = Field(default=None, min_length=1, max_length=80)
+
+class NewJob(Review):
+    review_token: str | None = Field(default=None, min_length=1, max_length=80)
+    request_id: str | None = Field(default=None, min_length=1, max_length=80)
     reviewed: bool = False
 
 class Suggestion(BaseModel):

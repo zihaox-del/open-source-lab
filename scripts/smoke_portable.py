@@ -12,6 +12,7 @@ import signal
 import socket
 import subprocess
 import tempfile
+import tomllib
 import time
 import urllib.request
 import zipfile
@@ -108,11 +109,15 @@ def verify(archive, root):
     try:
         with log_path.open('wb') as log:
             process, base = start(exe, env, cwd, port, log)
-            assert b'<html' in request(base, '/').lower(), 'Missing dashboard HTML'
+            expected_version = tomllib.loads((ROOT / 'pyproject.toml').read_text(encoding='utf-8'))['project']['version']
+            assert request(base, '/api/health')['version'] == expected_version, 'Packaged/source version mismatch'
+            assert request(base, '/') == (ROOT / 'websheet/static/index.html').read_bytes(), 'Packaged/source dashboard mismatch'
             demo = request(base, '/api/demo')
             preview = request(base, '/api/preview', {'url': demo['sample_url'], 'fields': demo['fields']})
             assert preview['row'], 'Empty demo preview'
-            job = request(base, '/api/jobs', {'urls': demo['urls'], 'fields': demo['fields'], 'reviewed': True})
+            review = request(base, '/api/review', {'urls': demo['urls'], 'fields': demo['fields']})
+            assert review['all_ok'] and len(review['samples']) == 3, review
+            job = request(base, '/api/jobs', {'urls': demo['urls'], 'fields': demo['fields'], 'reviewed': True, 'review_token': review['review_token']})
             job_id = job['id']
             request(base, f'/api/jobs/{job_id}/run', {})
             deadline = time.monotonic() + 20

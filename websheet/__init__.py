@@ -1,2 +1,2 @@
 """WebSheet Agent: reviewed, local-first static-page extraction."""
-__version__ = '0.3.1'
+__version__ = '0.4.0'

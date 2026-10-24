@@ -49,6 +49,7 @@ class GuidedTests(unittest.TestCase):
                 choice = result.json()['candidates'][0]
                 field = {'name':'名称','selector':choice['selector']}
                 payload = {'urls':['demo://catalog/1','demo://catalog/2'], 'fields':[field], 'reviewed':True, 'request_id':'stable-key'}
+                payload['review_token'] = client.post('/api/review', json=payload).json()['review_token']
                 job = client.post('/api/jobs', json=payload).json()
                 again = client.post('/api/jobs', json=payload).json()
                 self.assertEqual(job['id'], again['id'])

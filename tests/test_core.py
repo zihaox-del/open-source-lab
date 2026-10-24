@@ -137,7 +137,8 @@ class ApiTests(unittest.TestCase):
         demo = self.client.get('/api/demo').json()
         preview = self.client.post('/api/preview', json={'url': demo['sample_url'], 'fields': demo['fields']})
         self.assertEqual(preview.status_code, 200)
-        job = self.client.post('/api/jobs', json={**demo, 'reviewed':True}).json()
+        review = self.client.post('/api/review', json=demo).json()
+        job = self.client.post('/api/jobs', json={**demo, 'reviewed':True, 'review_token':review['review_token']}).json()
         done = self.client.post(f'/api/jobs/{job["id"]}/run').json()
         deadline = time.monotonic() + 10
         while done['status'] != 'complete' and time.monotonic() < deadline:

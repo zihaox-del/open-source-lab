@@ -1,3 +1,9 @@
+# v0.4.0 qualification pending
+
+Current source adds explicit up-to-three-page first/middle/last review and failed-only child drafts. The API binds successful review receipts to exact URL/field/engine/parent configuration. A completed parent is checked again transactionally when a child is created. Only failed rows are copied; original rows and exports remain unchanged.
+
+Local Python 3.12: 84 tests ran, 76 passed and 8 browser cases explicitly skipped; compileall, JavaScript syntax checking and the 30-page offline demo passed. Native-package smoke now requires exact source/packaged version and HTML equality. Current native builds remain pending. The real Chromium attempt in this sandbox is blocked at socket creation (`Operation not permitted`), before DOM tests run. New desktop/narrow comparison and retry screenshots must be produced and inspected in actual CI. No v0.4 remote or Windows pass is claimed yet. Historical links, hashes and screenshots below are explicitly older-version evidence, not qualification of the current source.
+
 # Verification record · 2026-10-24
 
 This record describes actual execution, not planned coverage.

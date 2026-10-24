@@ -1,4 +1,5 @@
 """Bounded static-HTML extraction. No JavaScript, cookies or authenticated browser."""
+from . import __version__
 import csv
 import codecs
 from email.message import Message
@@ -177,7 +178,7 @@ def fetch(url):
     connection = PinnedHTTPS(p.hostname, addresses[0])
     try:
         connection.request('GET', (p.path or '/') + ('?' + p.query if p.query else ''), headers={
-            'User-Agent': 'WebSheet-Agent/0.3.1 (static HTML extraction)', 'Accept': 'text/html', 'Accept-Encoding': 'identity'})
+            'User-Agent': f'WebSheet-Agent/{__version__} (static HTML extraction)', 'Accept': 'text/html', 'Accept-Encoding': 'identity'})
         response = connection.getresponse()
         if response.status != 200:
             raise ExtractionError(f'HTTP {response.status}；重定向不自动跟随')
