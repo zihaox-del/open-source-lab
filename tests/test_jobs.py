@@ -5,7 +5,7 @@ import threading
 import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
@@ -201,12 +201,14 @@ class DurableJobTests(unittest.TestCase):
         first, second = self.create(), self.create()
         self.assertEqual([j['id'] for j in self.store.list_jobs()], [second['id'], first['id']])
         legacy = Path(self.tmp.name) / 'legacy.sqlite3'
-        with sqlite3.connect(legacy) as db:
+        # The sqlite transaction context commits but does not close its handle.
+        with closing(sqlite3.connect(legacy)) as db, db:
             db.execute("CREATE TABLE jobs(id TEXT PRIMARY KEY, fields TEXT NOT NULL, status TEXT NOT NULL, engine TEXT NOT NULL DEFAULT 'static')")
             db.execute("INSERT INTO jobs VALUES('old','[]','running','static')")
         migrated = Store(legacy).get('old')
         self.assertEqual(migrated['status'], 'interrupted')
         self.assertTrue(migrated['created_at'])
+        legacy.unlink()  # Regression: no connection remains to block Windows deletion.
 
     def test_unknown_ids_and_bad_request_ids(self):
         for operation in (self.store.get, self.store.start, self.store.pause, self.store.run):

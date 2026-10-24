@@ -23,7 +23,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class PortableTests(unittest.TestCase):
     def test_default_data_is_outside_working_directory(self):
-        with patch.dict(os.environ, {}, clear=True):
+        # Windows resolves home from USERPROFILE, unlike POSIX's passwd fallback.
+        home = str(Path.home())
+        with patch.dict(os.environ, {'HOME': home, 'USERPROFILE': home}, clear=True):
             path = default_db_path()
         self.assertTrue(path.is_absolute())
         self.assertEqual(path.name, 'websheet.sqlite3')
@@ -31,8 +33,12 @@ class PortableTests(unittest.TestCase):
         self.assertNotEqual(path.parent, ROOT / 'data')
 
     def test_relative_platform_data_environment_does_not_write_into_bundle(self):
-        with patch.dict(os.environ, {'LOCALAPPDATA': 'relative', 'XDG_DATA_HOME': 'relative'}, clear=True):
-            self.assertTrue(default_db_path().is_absolute())
+        home = Path.home()
+        with patch.dict(os.environ, {'HOME': str(home), 'USERPROFILE': str(home),
+                                    'LOCALAPPDATA': 'relative', 'XDG_DATA_HOME': 'relative'}, clear=True):
+            path = default_db_path()
+            self.assertTrue(path.is_absolute())
+            self.assertTrue(path.is_relative_to(home))
 
     def test_explicit_data_override_is_preserved(self):
         with patch.dict(os.environ, {'WEBSHEET_DB': '~/custom.sqlite3'}):
