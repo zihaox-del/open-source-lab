@@ -30,3 +30,16 @@ required for the local synthetic demo.
 Maintainers should build in a clean environment, retain this notice directory in release
 ZIPs, and review native-library and package licensing whenever dependencies or build
 platforms change. Metadata alone is not a substitute for missing upstream license text.
+
+Linux bundles deliberately exclude the unused readline module. The build rejects
+unreviewed top-level system shared libraries and requires the distribution copyright
+for each included library, including util-linux/libuuid when present. The exact binary
+to notice mapping is in `system-runtime/bundled-libraries.json`; full referenced common
+license texts are retained. This inventory is evidence, not a legal-completeness guarantee.
+
+Windows bundles also retain Expat's notice from the exact CPython release, zlib and
+XZ/liblzma notices from its official external-source manifest, and SQLite's official
+public-domain/source-license information. `windows-externals.json` records this evidence;
+zlib and SQLite versions are checked against runtime values. XZ version attribution is
+based on the official CPython build manifest because `_lzma` exposes no runtime version API.
+OpenSSL notice URLs use the full public release version, not the legacy numeric tuple.
