@@ -31,7 +31,15 @@ jobs:
           cache: pip
       - run: python -m pip install -r requirements-browser.txt
       - run: python -m playwright install --with-deps chromium
-      - name: Verify bundled JavaScript demo in real Chromium
+      - name: Verify real Chromium demo and dashboard workflows
         run: python -m unittest discover -s tests -v
         env:
           WEBSHEET_BROWSER_TEST: '1'
+      - name: Upload synthetic dashboard evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-dashboard-evidence
+          path: test-artifacts/dashboard.png
+          if-no-files-found: warn
+          retention-days: 3

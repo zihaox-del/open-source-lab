@@ -44,3 +44,15 @@ Commit: `0158cb5b27ce2b44f4fb3d1d31f7b1629f38ba34`.
 7. Inspect desktop/mobile layout, long errors, network failure recovery, double clicks and keyboard navigation.
 
 Do not remove these limitations until the corresponding checks have actually passed.
+
+
+## v0.2 local acceptance pass (not yet CI-verified)
+
+- `python -m unittest discover -s tests -v`: 43 discovered, 39 passed, 4 explicitly skipped (renderer plus three actual dashboard browser tests).
+- New tests cover text-only candidate discovery, bounded repeated-sibling selectors, same-origin link discovery/deduplication/cap, malformed URLs, async API flow, persistent history, concurrent/repeated start, atomic idempotent creation, row-boundary pause/resume, migrations and worker-owned browser lifecycle.
+- `python -m compileall -q websheet tests`, extracted `node --check`, `python scripts/demo.py` and `python -m websheet.preflight` passed locally.
+- The new opt-in dashboard tests serve the actual FastAPI app on localhost and use real Playwright DOM interactions. They exercise no-CSS choice, cancel, preview/review, repeated clicks, refresh during background work, history switching, browser Back/Forward, pause/resume and both downloaded file contents. No API response or browser result is substituted.
+- A 60 ms delay is applied to genuine synthetic page reads in the dashboard test server solely to expose pause/progress deterministically; non-demo fetches are rejected, API-key-like environment values are removed and browser outbound requests are restricted to localhost.
+- Actual local dashboard browser launch was attempted and failed before navigation at Chromium process socket creation (`Operation not permitted`). These tests have not passed locally. No dashboard screenshot was produced or visually reviewed.
+- CI now uploads a synthetic-only dashboard screenshot with three-day retention if the real test creates one. Passing the new CI tests and inspecting that image remain required before claiming v0.2 dashboard acceptance.
+- Windows remains unsupported; macOS and WSL remain unverified. No live website or paid model call was made for v0.2.

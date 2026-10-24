@@ -4,7 +4,7 @@ from typing import Literal
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
-from .core import Column, ExtractionError, export_rows, extract, fetch
+from .core import Column, ExtractionError, export_rows, extract, fetch, candidates, discover_links
 from .store import Store
 from .ai import suggest
 
@@ -49,6 +49,18 @@ def create_app(db_path=None):
                            {'name': '价格', 'selector': '.price', 'attribute': 'text'},
                            {'name': '编号', 'selector': '#sku', 'attribute': 'text'}]}
 
+    @app.post('/api/inspect')
+    def inspect(body: Sample):
+        return {'candidates': candidates(fetch(body.url))}
+
+    @app.post('/api/discover')
+    def discover(body: Sample):
+        return {'links': discover_links(fetch(body.url), body.url)}
+
+    @app.get('/api/jobs')
+    def history():
+        return {'jobs': store.list_jobs()}
+
     @app.post('/api/preview')
     def preview(body: Preview):
         if body.engine == 'browser-demo':
@@ -69,7 +81,7 @@ def create_app(db_path=None):
 
     @app.post('/api/jobs')
     def create(body: NewJob):
-        return store.create(body.urls, body.fields, body.reviewed, body.engine)
+        return store.create(body.urls, body.fields, body.reviewed, body.engine, body.request_id)
 
     @app.get('/api/jobs/{job_id}')
     def get(job_id: str):
@@ -77,11 +89,11 @@ def create_app(db_path=None):
 
     @app.post('/api/jobs/{job_id}/run')
     def run(job_id: str):
-        if store.get(job_id)["engine"] == "browser-demo":
-            from .browser import renderer
-            with renderer() as render:
-                return store.run(job_id, fetcher=render)
-        return store.run(job_id)
+        return store.start(job_id)
+
+    @app.post('/api/jobs/{job_id}/pause')
+    def pause(job_id: str):
+        return store.pause(job_id)
 
     @app.get('/api/jobs/{job_id}/export')
     def export(job_id: str, format: str = 'csv'):
@@ -90,12 +102,16 @@ def create_app(db_path=None):
                         headers={'Content-Disposition': f'attachment; filename="websheet-{job_id}.{format}"'})
     return app
 
+class Sample(BaseModel):
+    url: str = Field(min_length=1, max_length=2048)
+
 class Preview(BaseModel):
     engine: Literal["static", "browser-demo"] = "static"
     url: str = Field(max_length=2048)
     fields: list[Column] = Field(min_length=1, max_length=20)
 
 class NewJob(BaseModel):
+    request_id: str | None = Field(default=None, min_length=1, max_length=80)
     engine: Literal["static", "browser-demo"] = "static"
     urls: list[str] = Field(min_length=1, max_length=100)
     fields: list[Column] = Field(min_length=1, max_length=20)

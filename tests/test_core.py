@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 import httpx
@@ -138,6 +139,10 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(preview.status_code, 200)
         job = self.client.post('/api/jobs', json={**demo, 'reviewed':True}).json()
         done = self.client.post(f'/api/jobs/{job["id"]}/run').json()
+        deadline = time.monotonic() + 10
+        while done['status'] != 'complete' and time.monotonic() < deadline:
+            time.sleep(0.01)
+            done = self.client.get(f'/api/jobs/{job["id"]}').json()
         self.assertEqual(done['completed'], 30)
         for fmt in ['csv','xlsx']:
             export = self.client.get(f'/api/jobs/{job["id"]}/export?format={fmt}')
