@@ -16,9 +16,9 @@
 | 引擎 | 实际行为 | 状态 |
 | --- | --- | --- |
 | 静态 HTML | 读取公开 HTTPS 网页并按规则提取，不执行 JS | 离线端到端与安全测试通过；未对真实网站做兼容性承诺 |
-| 浏览器演示 | Playwright 执行内置合成页 JS、读取渲染后 DOM；所有页面网络请求禁用 | 适配器已实现；当前开发环境禁止 Chromium 创建 socket，真实浏览器验收未完成 |
+| 浏览器演示 | Playwright 执行内置合成页 JS、读取渲染后 DOM；所有页面网络请求禁用 | GitHub Actions 已通过真实 Chromium 合成页 JS 渲染测试；网页界面视觉验收仍未完成 |
 
-浏览器演示仅接受 `demo://catalog/1` 至 `demo://catalog/99`，不是公网浏览器采集功能。不能声称完成了真实网站浏览器自动化。下一阶段需先解决受控浏览器环境的验收与出站隔离，再扩展公开动态页。
+浏览器演示仅接受 `demo://catalog/1` 至 `demo://catalog/99`，不是公网浏览器采集功能。不能声称完成了真实网站浏览器自动化。GitHub Actions 已验证内置合成页真实渲染；下一阶段仍需完成界面验收及面向公网的出站隔离，才能考虑公开动态页。
 
 ## 快速开始（Linux / macOS，Python 3.11+）
 
@@ -95,8 +95,8 @@ python scripts/demo.py
 
 可选真实浏览器测试：`WEBSHEET_BROWSER_TEST=1 python -m unittest discover -s tests -v`。需要可运行的 Chromium；默认明确跳过，不将未运行计为成功。参见 [验证记录](docs/VERIFICATION.md)。
 
-MIT © 2026 WebSheet Agent contributors。欢迎小范围、可测试的贡献，参见 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [SECURITY.md](SECURITY.md)。
+MIT © 2026 zihaox-del and WebSheet Agent contributors。欢迎小范围、可测试的贡献，参见 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [SECURITY.md](SECURITY.md)。
 
 ## English summary
 
-WebSheet Agent is an original, local-first MVP for reviewed static-page extraction into traceable CSV/XLSX files. It supports same-origin HTTPS URL lists, manual selectors, optional DeepSeek selector suggestions, per-row failures and durable resume. It is not a universal browser agent. A separate Playwright renderer runs bundled synthetic demos only with page network access disabled; real browser QA is explicitly unverified in this sandbox. Public JavaScript pages, logins, CAPTCHA bypass, Windows-native and hosted multi-user operation are out of scope. Start with `python -m websheet`; use the 30-page offline demo without any API key.
+WebSheet Agent is an original, local-first MVP for reviewed static-page extraction into traceable CSV/XLSX files. It supports same-origin HTTPS URL lists, manual selectors, optional DeepSeek selector suggestions, per-row failures and durable resume. It is not a universal browser agent. A separate Playwright renderer runs bundled synthetic demos only with page network access disabled; real Chromium rendering of 30 bundled synthetic pages passed in GitHub Actions, while dashboard visual QA remains unverified. Public JavaScript pages, logins, CAPTCHA bypass, Windows-native and hosted multi-user operation are out of scope. Start with `python -m websheet`; use the 30-page offline demo without any API key.
