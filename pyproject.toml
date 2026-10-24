@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "websheet-agent"
+version = "0.1.0"
+description = "Local-first, reviewed static HTML extraction to traceable spreadsheets"
+requires-python = ">=3.11"
+license = "MIT"
+dynamic = ["dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[tool.setuptools.package-data]
+websheet = ["static/*.html"]

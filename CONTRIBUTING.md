@@ -1,15 +1,13 @@
-# 贡献指南
+# Contributing
 
-## 新项目
+Small, focused contributions are welcome. Discuss larger features in an issue before implementation.
 
-先使用项目提案模板提交问题、目标用户、最小版本和验收证据。未经验证的想法不会直接进入开发。
+1. Use Python 3.11+ on Linux/macOS and a virtual environment.
+2. Install `requirements.txt`. The optional browser dependency is separate.
+3. Run `python -m unittest discover -s tests -v` and `python -m compileall -q websheet tests`.
+4. Add deterministic, offline tests for new behavior; never commit API keys, real user data, databases or credentials.
+5. Keep model suggestions separate from deterministic execution. Do not weaken same-origin, public-IP, local-only or explicit upload boundaries.
+6. Document supported versus untested behavior. Browser-dependent tests must explicitly skip when not enabled; do not report mocks as real browser validation.
+7. Submit a concise pull request with purpose, tests actually run, and limitations.
 
-## 代码变更
-
-- 每次变更只解决一个清晰问题。
-- 新行为必须有测试或可重复的验证步骤。
-- 用户可见变化要更新使用说明和变更记录。
-- 不得提交敏感信息、公司资产或权属不明材料。
-- 新依赖必须说明用途并检查许可证。
-
-维护者会优先审查正确性、安全性、可维护性和真实需求证据。
+The project is MIT licensed. Contributions are accepted under the same license. Please be respectful and focus feedback on behavior and code.
