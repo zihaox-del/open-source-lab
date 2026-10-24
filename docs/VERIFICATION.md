@@ -2,6 +2,12 @@
 
 This record describes actual execution, not planned coverage.
 
+## v0.3 milestone awaiting remote acceptance
+
+The redesigned three-stage interface and Windows/Linux portable packaging are new in this milestone. Local Python 3.12 discovered 54 tests: 49 passed and 5 real-browser tests were explicitly skipped. The Linux packaging worker tested an earlier intermediate bundle; that does not qualify the latest UI package for distribution. Exact-commit browser, Windows and Linux package jobs must pass before claiming this milestone verified. No key or paid model call is needed or used.
+
+Earlier sections below describe the previous v0.2 baseline, not the new UI or native Windows package.
+
 ## v0.2 verified in GitHub Actions
 
 Source commit: `cc480bae1628ef2371b1a528573657153dc68b65`.
@@ -43,3 +49,15 @@ Linux sandbox / Python 3.12, direct dependency versions matching requirements.tx
 The v0.1 renderer and Python matrix passed at `0158cb5b27ce2b44f4fb3d1d31f7b1629f38ba34` ([run](https://github.com/zihaox-del/open-source-lab/actions/runs/40048939225)): 21 tests with no skips in its Chromium job. That baseline did not verify the dashboard workflows subsequently covered above.
 
 Do not remove remaining limitations until the corresponding checks have actually passed.
+
+
+## 便携包新增验证（本地结果，不冒充 Windows 验收）
+
+- 本地 Linux：53 项单元/API/并发测试通过，4 项可选真实浏览器测试跳过；静态 30 条合成页和 XLSX 自检通过。
+- 新增真实子进程 OS 锁测试：进程 A 持锁时进程 B 不得恢复其运行状态；终止 A 后可恢复并继续。Windows 与 POSIX 使用同一测试，无 Windows 跳过。
+- 启动器先独占绑定 loopback socket，再启动服务；占用端口不初始化数据库、不打开浏览器。浏览器仅在自己的服务启动且 health 确认后打开。
+- 数据默认写入当前用户数据目录，静态 HTML 从包内资源读取；支持显式 WEBSHEET_DB。
+- Ctrl+C 路径等待当前行完成、留下待处理行；直接 uvicorn 启动及强制终止仅承诺已提交行恢复，不承诺正常退出。
+- Windows 原生 exe、解压后无 Python 依赖运行和第三方许可证打包，必须由新 portable 流水线实际验证后再宣称可下载/可用。没有执行真实公网采集或付费 API 调用。
+
+- 实际 Linux PyInstaller ZIP 已解压运行通过：清空 Python PATH、独立含空格工作目录与用户数据目录，health/HTML/30 条样本/CSV/XLSX/无关服务端口冲突/第二实例拒绝/退出码 0/同端口立即重启与历史恢复全部通过。此结果不替代 Windows CI；最终 UI 改动后需重新构建产物。

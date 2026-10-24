@@ -1,22 +1,19 @@
 """Local readiness checks. Never installs packages or changes system settings."""
 import importlib.util
-import os
-from pathlib import Path
 import socket
 import sys
 import tempfile
+from .paths import default_db_path
 
 
 def check(port=8765):
     errors = []
     if sys.version_info < (3, 11):
         errors.append('需要 Python 3.11 或更新版本。')
-    if sys.platform == 'win32':
-        errors.append('当前版本不支持原生 Windows；请使用 Linux，WSL/macOS 尚未验收。')
     for module in ('fastapi', 'uvicorn', 'pydantic', 'httpx', 'lxml', 'openpyxl'):
         if importlib.util.find_spec(module) is None:
             errors.append(f'缺少依赖 {module}，请在虚拟环境运行 python -m pip install -r requirements.txt。')
-    directory = Path(os.environ.get('WEBSHEET_DB', 'data/websheet.sqlite3')).expanduser().parent
+    directory = default_db_path().parent
     try:
         directory.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryFile(dir=directory):
@@ -27,7 +24,7 @@ def check(port=8765):
         with socket.socket() as sock:
             sock.bind(('127.0.0.1', port))
     except OSError:
-        errors.append(f'无法监听本机端口 {port}：可能已有服务运行，或环境限制了网络套接字。请先尝试打开 http://127.0.0.1:{port}。')
+        errors.append(f'无法监听本机端口 {port}：可能已有服务运行，或环境限制了网络套接字。请关闭占用端口的程序后重试，不会打开或接管现有服务。')
     return errors
 
 

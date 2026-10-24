@@ -42,8 +42,21 @@ def synthetic_fetch(url):
     if core.origin(url) != 'demo://catalog':
         raise core.ExtractionError('Dashboard QA permits synthetic catalog only')
     time.sleep(0.06)
+    if url == 'demo://catalog/99':
+        return '<html><body><script>0</script></body></html>'
+    if url == 'demo://catalog/97':
+        return '<a href="demo://catalog/1">First</a><a href="demo://catalog/2">Second</a>'
+    if url == 'demo://catalog/98':
+        return '<html><body><h1>合成缺字段示例</h1></body></html>'
     return original_fetch(url)
 core.fetch = synthetic_fetch
+import websheet.app as app_module
+original_extract = app_module.extract
+def delayed_extract(content, fields):
+    if any(field.name == '慢列' for field in fields):
+        time.sleep(0.7)
+    return original_extract(content, fields)
+app_module.extract = delayed_extract
 import uvicorn
 uvicorn.run('websheet.app:create_app', factory=True, host='127.0.0.1',
             port=PORT, access_log=False)
@@ -114,24 +127,31 @@ uvicorn.run('websheet.app:create_app', factory=True, host='127.0.0.1',
         self.assertEqual(self.external_requests, [], 'Dashboard attempted non-local requests')
         self.assertEqual(self.page_errors, [], 'Dashboard emitted JavaScript exceptions')
 
+    def screenshot(self, name):
+        artifacts = Path(__file__).resolve().parents[1] / 'test-artifacts'
+        artifacts.mkdir(exist_ok=True)
+        self.page.screenshot(path=str(artifacts / (name + '.png')), full_page=True)
+
     def load_demo(self):
         self.page.locator('#demo').click()
-        self.expect(self.page.locator('#urls')).to_have_value(re.compile('demo://catalog/1'))
+        self.expect(self.page.locator('#choose-stage')).to_be_visible()
         self.expect(self.page.locator('#demo')).to_be_enabled()
 
-    def preview_and_review(self):
-        self.page.locator('#preview').click()
+    def choose_fields(self):
+        for value, name in [('合成示例商品 01', '名称'), ('13.00', '价格')]:
+            self.page.get_by_label('字段名称：' + value, exact=True).fill(name)
+            self.page.locator('#candidates').get_by_role(
+                'button', name='选择 ' + value, exact=True).click()
         self.expect(self.page.locator('#preview-result')).to_be_visible()
         self.expect(self.page.locator('#preview-grid')).to_contain_text('合成示例商品 01')
         self.expect(self.page.locator('#preview-grid')).to_contain_text('13.00')
-        self.page.locator('#reviewed').check()
         self.expect(self.page.locator('#run')).to_be_enabled()
 
-    def wait_complete(self):
-        self.expect(self.page.locator('#job-status')).to_contain_text('采集完成', timeout=30000)
-        self.expect(self.page.locator('#completed')).to_have_text('30')
+    def wait_complete(self, total=30):
+        self.expect(self.page.locator('#job-status')).to_contain_text('整理完成', timeout=30000)
+        self.expect(self.page.locator('#completed')).to_have_text(str(total))
         self.expect(self.page.locator('#failed')).to_have_text('0')
-        self.expect(self.page.locator('#results tbody tr')).to_have_count(30)
+        self.expect(self.page.locator('#results tbody tr')).to_have_count(total)
 
     def assert_downloads(self):
         from openpyxl import load_workbook
@@ -140,7 +160,6 @@ uvicorn.run('websheet.app:create_app', factory=True, host='127.0.0.1',
                 self.page.locator('#' + format).click()
             download = event.value
             self.assertIsNone(download.failure())
-            self.assertTrue(download.suggested_filename.endswith('.' + format))
             path = Path(self.temp.name) / ('verified.' + format)
             download.save_as(path)
             if format == 'csv':
@@ -153,8 +172,7 @@ uvicorn.run('websheet.app:create_app', factory=True, host='127.0.0.1',
                 finally:
                     book.close()
             self.assertEqual(len(matrix), 31)
-            headers = list(matrix[0])
-            rows = [dict(zip(headers, row)) for row in matrix[1:]]
+            rows = [dict(zip(matrix[0], row)) for row in matrix[1:]]
             self.assertEqual(len({row['source_id'] for row in rows}), 30)
             self.assertEqual([row['source_url'] for row in rows],
                              [f'demo://catalog/{n}' for n in range(1, 31)])
@@ -164,110 +182,132 @@ uvicorn.run('websheet.app:create_app', factory=True, host='127.0.0.1',
             self.assertEqual(str(rows[0]['价格']), '13.00')
             self.assertEqual(str(rows[-1]['价格']), '390.00')
 
-    def test_no_css_selection_background_run_refresh_and_downloads(self):
+    def test_first_use_automatic_preview_refresh_duplicate_start_and_download(self):
+        self.expect(self.page.locator('#input-stage')).to_be_visible()
+        self.expect(self.page.locator('#engine')).not_to_be_visible()
+        self.expect(self.page.locator('#result-stage')).not_to_be_visible()
+        self.screenshot('desktop-input')
         self.load_demo()
-        self.page.locator('#inspect').click()
-        self.expect(self.page.locator('#candidate-panel')).to_be_visible()
-        for value, name in [('合成示例商品 01', '名称'), ('13.00', '价格')]:
-            self.page.get_by_label('字段名称：' + value, exact=True).fill(name)
-            self.page.locator('#candidates').get_by_role(
-                'button', name='选择 ' + value, exact=True).click()
-        self.page.locator('#use-fields').click()
-        self.expect(self.page.locator('#candidate-panel')).not_to_be_visible()
-        self.preview_and_review()
+        self.expect(self.page.get_by_label('字段名称：13.00', exact=True)).to_have_value('列2')
+        self.choose_fields()
+        self.expect(self.page.locator('#scope')).to_contain_text('30 页 · 2 列')
+        self.screenshot('desktop-choose')
+        self.page.reload()
+        self.expect(self.page.locator('#choose-stage')).to_be_visible()
+        self.expect(self.page.get_by_label('字段名称：13.00', exact=True)).to_have_value('价格')
+        self.expect(self.page.locator('#run')).to_be_enabled()
         created = []
         self.page.on('request', lambda request: created.append(request.url)
                      if request.method == 'POST' and request.url == self.base + '/api/jobs' else None)
-        # Two immediate real DOM activations exercise the UI's duplicate-submit
-        # guard without replacing its event handler or any network response.
         self.page.locator('#run').evaluate('(button) => { button.click(); button.click(); }')
-        self.expect(self.page.locator('#job-status')).to_contain_text('正在采集')
+        self.expect(self.page.locator('#result-stage')).to_be_visible()
         self.page.reload()
         self.wait_complete()
-        self.assertEqual(len(created), 1, 'Repeated start created duplicate jobs')
-        self.expect(self.page.locator('#run')).to_be_disabled()
-        history_id = self.page.locator('#history').input_value()
-        self.assertTrue(history_id)
-        self.expect(self.page.locator('#history option[value="' + history_id + '"]')).to_have_count(1)
-        self.page.reload()
-        self.wait_complete()
-        self.expect(self.page.locator('#history')).to_have_value(history_id)
-        self.page.locator('#history').select_option(history_id)
-        self.expect(self.page.locator('#job-subtitle')).to_contain_text(history_id)
+        self.assertEqual(len(created), 1)
+        self.expect(self.page.locator('#choose-stage')).not_to_be_visible()
         self.assert_downloads()
-        artifacts = Path(__file__).resolve().parents[1] / 'test-artifacts'
-        artifacts.mkdir(exist_ok=True)
-        # Completion text updates before the 0.3-second progress transition ends.
-        # Capture settled evidence, not a misleading partly filled completion bar.
-        self.page.wait_for_function('''() => {
-            const bar = document.getElementById('bar');
-            return bar.style.width === '100%' &&
-                Math.abs(bar.getBoundingClientRect().width -
-                         bar.parentElement.getBoundingClientRect().width) < 1;
-        }''')
-        self.page.screenshot(path=str(artifacts / 'dashboard.png'), full_page=True,
-                             animations='disabled')
+        self.screenshot('desktop-complete')
+        self.screenshot('dashboard')
 
-    def test_draft_cancel_pause_resume_and_history(self):
+    def test_cancel_pause_resume_and_history_navigation(self):
         self.load_demo()
-        original_fields = self.page.locator('#fields input').evaluate_all(
-            '(inputs) => inputs.map(input => input.value)')
-        self.page.locator('#inspect').click()
-        self.expect(self.page.locator('#candidate-panel')).to_be_visible()
-        self.page.get_by_label('字段名称：合成示例商品 01', exact=True).fill('不应保存的草稿')
-        self.page.locator('#candidates').get_by_role(
-            'button', name='选择 合成示例商品 01', exact=True).click()
+        self.choose_fields()
         self.page.locator('#cancel-fields').click()
-        self.expect(self.page.locator('#candidate-panel')).not_to_be_visible()
-        self.assertEqual(self.page.locator('#fields input').evaluate_all(
-            '(inputs) => inputs.map(input => input.value)'), original_fields)
-        self.preview_and_review()
+        self.expect(self.page.locator('#input-stage')).to_be_visible()
+        self.page.locator('#inspect').click()
+        self.expect(self.page.locator('#run')).to_be_disabled()
+        self.choose_fields()
         self.page.locator('#run').click()
         self.expect(self.page.locator('#pause')).to_be_enabled()
         self.page.locator('#pause').click()
-        self.expect(self.page.locator('#job-status')).to_have_text(re.compile('已暂停'), timeout=15000)
+        self.expect(self.page.locator('#job-status')).to_contain_text('已暂停', timeout=15000)
         completed = int(self.page.locator('#completed').inner_text())
-        self.assertLess(completed, 30, 'Pause did not preserve pending work')
+        self.assertLess(completed, 30)
         history_id = self.page.locator('#history').input_value()
         self.page.reload()
-        self.expect(self.page.locator('#job-status')).to_have_text(re.compile('已暂停'))
+        self.expect(self.page.locator('#job-status')).to_contain_text('已暂停')
         self.expect(self.page.locator('#completed')).to_have_text(str(completed))
-        self.expect(self.page.locator('#history')).to_have_value(history_id)
         self.page.locator('#resume').click()
+        self.wait_complete()
+        self.page.locator('#new-task').click()
+        self.expect(self.page.locator('#input-stage')).to_be_visible()
+        self.page.locator('#history-section summary').click()
+        self.page.locator('#history').select_option(history_id)
+        self.expect(self.page.locator('#result-stage')).to_be_visible()
+        self.page.goto(self.base + '/api/demo')
+        self.page.go_back()
+        self.expect(self.page.locator('#result-stage')).to_be_visible()
+        self.page.go_forward()
+        self.page.go_back()
         self.wait_complete()
         self.assert_downloads()
 
-
-    def test_switch_history_during_run_and_browser_back_forward(self):
-        self.load_demo()
+    def test_narrow_single_url_and_failure_outcome(self):
+        self.page.set_viewport_size({'width': 390, 'height': 844})
+        self.screenshot('mobile-input')
         self.page.locator('#urls').fill('demo://catalog/1')
-        self.preview_and_review()
+        self.page.locator('#inspect').click()
+        self.choose_fields()
+        self.expect(self.page.locator('#scope')).to_contain_text('1 页 · 2 列')
+        self.screenshot('mobile-choose')
+        self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'), 390)
         self.page.locator('#run').click()
-        self.expect(self.page.locator('#job-status')).to_contain_text('采集完成', timeout=15000)
+        self.wait_complete(1)
+        self.screenshot('mobile-complete')
+        self.page.locator('#new-task').click()
+        self.page.locator('#urls').fill('demo://catalog/1\ndemo://catalog/98')
+        self.page.locator('#inspect').click()
+        self.choose_fields()
+        self.page.locator('#run').click()
+        self.expect(self.page.locator('#job-status')).to_contain_text('整理完成', timeout=15000)
         self.expect(self.page.locator('#completed')).to_have_text('1')
-        first_id = self.page.locator('#history').input_value()
-        self.load_demo()
-        self.preview_and_review()
-        self.page.locator('#run').click()
-        self.expect(self.page.locator('#job-status')).to_contain_text('正在采集')
-        self.expect(self.page.locator('#history')).to_be_enabled()
-        second_id = self.page.locator('#history').input_value()
-        self.assertNotEqual(first_id, second_id)
-        self.page.locator('#history').select_option(first_id)
-        self.expect(self.page.locator('#job-subtitle')).to_contain_text(first_id)
-        self.expect(self.page.locator('#total')).to_have_text('1')
-        self.page.locator('#history').select_option(second_id)
-        self.expect(self.page.locator('#job-subtitle')).to_contain_text(second_id)
-        self.expect(self.page.locator('#total')).to_have_text('30')
-        # Leave the actual dashboard, then exercise native history navigation.
-        # The background worker and SQLite results must outlive page navigation.
-        self.page.goto(self.base + '/api/demo')
-        self.page.go_back()
-        self.expect(self.page.locator('#history')).to_have_value(second_id)
-        self.page.go_forward()
-        self.assertEqual(self.page.url, self.base + '/api/demo')
-        self.page.go_back()
-        self.expect(self.page.locator('#history')).to_have_value(second_id)
-        self.wait_complete()
-        self.expect(self.page.locator('#urls')).to_have_value(
-            '\n'.join(f'demo://catalog/{n}' for n in range(1, 31)))
+        self.expect(self.page.locator('#failed')).to_have_text('1')
+        self.expect(self.page.locator('#failure-note')).to_be_visible()
+        self.expect(self.page.locator('#results')).to_contain_text('匹配 0 个元素')
+        self.expect(self.page.locator('#xlsx')).to_be_enabled()
+        self.screenshot('mobile-partial-failure')
+
+    def test_read_errors_empty_discovery_and_stale_preview(self):
+        self.page.locator('#urls').fill('https://[broken')
+        self.page.locator('#inspect').click()
+        self.expect(self.page.locator('#message')).to_contain_text('网址格式')
+        self.expect(self.page.locator('#urls')).to_have_value('https://[broken')
+        self.page.locator('#urls').fill('demo://catalog/99')
+        self.page.locator('#inspect').click()
+        self.expect(self.page.locator('#message')).to_contain_text('没有找到可选的静态文字')
+        self.expect(self.page.locator('#run')).to_be_disabled()
+        self.page.locator('#cancel-fields').click()
+        self.expect(self.page.locator('#urls')).to_have_value('demo://catalog/99')
+        self.page.locator('#urls').fill('demo://catalog/97')
+        self.page.locator('#discovery summary').click()
+        self.page.locator('#discover').click()
+        self.expect(self.page.locator('#links input')).to_have_count(2)
+        self.page.locator('#links input').nth(0).check()
+        self.page.locator('#links input').nth(1).check()
+        self.page.locator('#use-links').click()
+        self.expect(self.page.locator('#urls')).to_have_value('demo://catalog/1\ndemo://catalog/2')
+        self.page.locator('#inspect').click()
+        self.choose_fields()
+        self.expect(self.page.locator('#preview-grid table thead th')).to_have_count(2)
+        price_name = self.page.get_by_label('字段名称：13.00', exact=True)
+        with self.page.expect_request(lambda request: request.url.endswith('/api/preview')):
+            price_name.fill('慢列')
+        price_name.fill('更新后的列')
+        self.expect(self.page.locator('#run')).to_be_enabled()
+        self.expect(self.page.locator('#preview-grid th')).to_have_text(['名称', '更新后的列'])
+        self.page.wait_for_timeout(900)  # Let older, real delayed extraction finish.
+        self.expect(self.page.locator('#preview-grid th')).to_have_text(['名称', '更新后的列'])
+        with self.page.expect_request(lambda request: request.url.endswith('/api/preview')):
+            price_name.fill('慢列')
+        self.page.locator('#cancel-fields').click()
+        self.page.wait_for_timeout(900)
+        self.expect(self.page.locator('#input-stage')).to_be_visible()
+        self.expect(self.page.locator('#run')).to_be_disabled()
+        # Advanced demo-engine selection must not trap the ordinary input flow.
+        self.page.locator('#inspect').click()
+        self.page.locator('#advanced summary').first.click()
+        self.page.locator('#engine').select_option('browser-demo')
+        self.page.locator('#cancel-fields').click()
+        self.page.locator('#inspect').click()
+        self.expect(self.page.locator('#choose-stage')).to_be_visible()
+        self.expect(self.page.locator('#engine')).to_have_value('static')

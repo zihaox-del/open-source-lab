@@ -2,7 +2,7 @@
 
 **把同类详情页变成可追溯的表格。先检查一条，再确定性批量执行。**
 
-v0.2 早期可运行版本，不是“万能浏览器代理”。适合整理有权访问的公开静态目录、公告或资料详情页；不适合登录后页面、复杂交互、反爬绕过或任意网站自动操作。
+v0.3 早期可运行版本，不是“万能浏览器代理”。适合整理有权访问的公开静态目录、公告或资料详情页；不适合登录后页面、复杂交互、反爬绕过或任意网站自动操作。
 
 ## 为什么做这个
 
@@ -20,7 +20,20 @@ v0.2 早期可运行版本，不是“万能浏览器代理”。适合整理有
 
 浏览器演示仅接受 `demo://catalog/1` 至 `demo://catalog/99`，不是公网浏览器采集功能。不能声称完成了真实网站浏览器自动化。GitHub Actions 已验证内置合成页真实渲染；下一阶段仍需扩展多视口/无障碍验收及面向公网的出站隔离，才能考虑公开动态页。
 
-## 快速开始（Linux / macOS，Python 3.11+）
+## 普通用户：免 Python 便携包（构建验收中）
+
+本仓库新增 Windows 原生便携包构建流程。**源码测试通过不等于 Windows 安装包已验收**：只有对应提交的「Portable desktop bundles」流水线全部通过后，才使用它产生的 ZIP；尚未签名，也不是可信安装器或正式稳定发行版。
+
+1. 在仓库 Actions 的「Portable desktop bundles」成功运行页面下载对应系统的产物（下载 Actions 产物通常需要登录 GitHub）。
+2. 完整解压 ZIP 到自己可读的位置，不要直接在压缩软件里运行，也不要只复制 `.exe`。
+3. Windows 双击 `WebSheet-Agent.exe`，启动成功后自动打开本机浏览器。无需管理员权限，无需安装 Python、浏览器自动化组件或填写 Key。
+4. 保留启动窗口，按下方“第一次使用”完成合成数据演示。停止时在启动窗口按 Ctrl+C，等待窗口退出；关掉网页不会停止采集。
+
+未签名程序可能被系统拦截。不要关闭安全防护、绕过警告或使用来源不明的镜像；请检查源码/构建记录，或等待可信分发方式。端口已占用时会报错，不会打开或接管未知服务。数据默认留在当前用户目录，不会写进解压目录；删除程序文件不等于删除数据。
+
+包内 `START_HERE.txt` 说明隐私、数据目录、备份与停止方法，`THIRD_PARTY_NOTICES.md` 和 `licenses/` 保留运行时依赖许可证。包内不带真实任务、密钥、账号或 Chromium；可选 Playwright 演示不属于便携包功能。
+
+## 开发者运行（Python 3.11+）
 
 ```bash
 python -m venv .venv
@@ -29,21 +42,23 @@ python -m pip install -r requirements.txt
 python -m websheet
 ```
 
-在本机打开 http://127.0.0.1:8765。固定仅监听 loopback；不提供账号、远程协作或生产多用户部署，不要暴露到公网。Windows 原生未支持（文件锁使用 `fcntl`）；可自行在 WSL 中试用，但未验收。
+启动后自动在本机浏览器打开 http://127.0.0.1:8765（可用 `python -m websheet --no-browser` 关闭自动打开）。固定仅监听 loopback；不提供账号、远程协作或生产多用户部署，不要暴露到公网。Windows 源码使用 `msvcrt` 文件锁，POSIX 使用 `flock`；Windows 实际兼容性以对应提交 CI 为准。Windows 虚拟环境激活命令为 `.venv\Scripts\activate`。
+
+使用 `python -m websheet --self-check` 可无网络验证 30 条合成数据及 XLSX 导出。启动器支持 `--port 8766`，默认仍为 8765；浏览器草稿按端口隔离，数据库历史不按端口隔离。
 
 也可运行 `sh scripts/start.sh`：先检查 Python/依赖、数据目录和端口，再启动。不自动安装软件或修改全局设置。单独检查：`python -m websheet.preflight`。
 
 ### 第一次使用：无需 CSS、无需 API Key
 
-1. 点击“载入演示”，得到 **30 个纯合成页面**，不访问真实商品网站。
-2. 点击“读取样本，选择要搬的内容”，点选“合成示例商品 01”和“13.00”，分别命名为“名称”“价格”，然后“使用所选字段”。
-3. 点击“预览样本”，核对值，再勾选确认，点击“开始采集”。
+1. 点击“先试试演示”，自动读取第一条合成页面，进入内容选择。共 **30 个纯合成页面**，不访问真实商品网站。
+2. 选择“合成示例商品 01”和“13.00”等内容，把默认“列1”“列2”改成你需要的名称，例如“名称”“价格”。系统自动验证真实样本，生成样表，不替你猜字段含义。
+3. 检查样表后，点击“确认样表，开始整理 30 页”。这是明确开始批量执行的唯一确认，不需要另找预览按钮或确认复选框。
 4. 任务在后台逐页运行，界面显示完成计数。可以刷新、查看历史，或暂停；暂停会等待当前页读取结束。成功和失败行不自动重复运行。
-5. 完成后导出 Excel 或 CSV。导出包括所有状态，请检查失败计数；失败行会附原因。
+5. 完成后点击“下载 Excel”或“下载 CSV”，然后可“整理另一组网页”。导出包括所有状态，请检查失败计数；失败行会附原因。旧任务从“查看本机历史任务”找回。
 
 ### 换成自己的公开静态页面
 
-- 填写一个详情页样本网址，再读取并点选字段。候选只显示解析后的文本，不展示或执行原网页 HTML；最多 100 个候选，最多选 20 列。
+- 粘贴一个或多个详情页网址，点击“读取网页，选择内容 →”，用第一条网址作为样本并点选字段。候选只显示解析后的文本，不展示或执行原网页 HTML；最多 100 个候选，最多选 20 列。
 - 批量网址可每行粘贴一个，最多 100 个同源 HTTPS 网址；重复项按首次出现顺序去重。
 - 也可展开“从列表页找详情网址”，读取该页最多 100 个去重同源链接，自行勾选真正的详情页。**不自动翻页、不访问候选链接、不判断链接一定是详情页**。
 - 未找到所需字段，可能是页面需要 JavaScript/登录，或其结构超出当前候选识别范围。不要把空结果当作成功。
@@ -71,16 +86,17 @@ python -m playwright install chromium
 python -m websheet
 ```
 
-载入演示后选择“浏览器演示”。可添加字段 `渲染验证`、选择器 `#rendered`、属性 `text`，预览将显示“浏览器已执行 JavaScript”。静态引擎对这个字段会明确失败，区别于假装执行的演示。
+载入演示后，在高级选项选择“浏览器演示”。可添加字段 `渲染验证`、选择器 `#rendered`、属性 `text`，预览将显示“浏览器已执行 JavaScript”。静态引擎对这个字段会明确失败，区别于假装执行的演示。
 
 可通过 `PLAYWRIGHT_BROWSERS_PATH` 设置官方浏览器安装缓存，或使用 `WEBSHEET_CHROMIUM_PATH` 指定已安装的 Chromium。不要为了运行而关闭操作系统安全限制。若环境禁止浏览器创建 socket，请改用允许浏览器运行的环境；静态功能不受影响。
 
 ## 数据与恢复
 
-- 默认数据库：`data/websheet.sqlite3`，可由 `WEBSHEET_DB` 改到另一条本机路径。
+- 默认数据库：Windows `%LOCALAPPDATA%\WebSheetAgent\websheet.sqlite3`；Linux `${XDG_DATA_HOME:-~/.local/share}/WebSheetAgent/websheet.sqlite3`；macOS `~/Library/Application Support/WebSheetAgent/websheet.sqlite3`（macOS 便携包未提供、未验收）。可由 `WEBSHEET_DB` 指定另一条本机路径。
+- **旧版本升级**：原来的 `data/websheet.sqlite3` 不会自动搬迁或删除。请先停止旧服务并备份，再设置 `WEBSHEET_DB` 指向旧文件，或把该文件复制到上述新目录；不要在服务仍运行时复制数据库。首次使用新目录会显示空历史，不代表旧数据已丢失。
 - 数据库保存任务规则快照、原始 URL、提取值和错误，不保存模型密钥；内容为明文，请依照数据敏感程度保护本机目录。
 - URL 去重保持首次输入顺序；来源 ID 为 URL SHA-256 的前 20 个十六进制字符。
-- 单进程默认服务；OS 文件锁阻止多个任务同时写入运行结果。每处理完一行立即提交，进程退出会释放锁。
+- 单进程默认服务；跨进程 OS 文件锁阻止多个任务同时写入运行结果。每处理完一行立即提交，进程退出会释放锁。通过本项目启动器按 Ctrl+C 停止时，会等待当前行结束再暂停未完成任务；强制结束/关机后，重启会恢复为可继续状态。
 - 任务历史保存在 SQLite，清除浏览器数据后仍能从历史列表找回。浏览器 localStorage 保存当前草稿（网址列表、样本网址、字段规则）、选中任务和未确认创建请求的标识/内容；均为本机明文，不用于共享。刷新不停止后台任务；停止服务会中断任务，重启后可继续待处理行。
 - 批次完成不等于全成功，请看失败计数。失败结果不自动覆盖；重新采集应新建任务。
 - 导出保留所有状态，包括未处理/失败行。CSV/XLSX 在潜在公式前加 `'`，移除 XML 非法控制字符；数据库中原始提取值不因此修改。
@@ -111,9 +127,9 @@ MIT © 2026 zihaox-del and WebSheet Agent contributors。欢迎小范围、可�
 
 ## English summary
 
-WebSheet Agent is an original, local-first MVP for reviewed static-page extraction into traceable CSV/XLSX files. Version 0.2 adds a Chinese no-CSS text-value picker, bounded same-origin list-page link discovery, persistent job history, background progress and cooperative pause/resume. Manual selectors and optional DeepSeek suggestions remain available. Duplicate creation requests are idempotent. It is not a universal browser agent. A separate Playwright renderer runs bundled synthetic demos only with page network access disabled; real Chromium rendering of 30 bundled synthetic pages passed in GitHub Actions, and real dashboard acceptance tests passed; one desktop synthetic-result screenshot was visually reviewed, not a full responsive/accessibility audit. Public JavaScript pages, logins, CAPTCHA bypass, Windows-native and hosted multi-user operation are out of scope. Start with `python -m websheet`; use the 30-page offline demo without any API key.
+WebSheet Agent is an original, local-first MVP for reviewed static-page extraction into traceable CSV/XLSX files. Version 0.3 introduces a three-stage first-use flow with one URL input, text-value selection, automatic sample preview and an explicit start confirmation. Persistent history, bounded same-origin link discovery and cooperative pause/resume remain available. Native Windows/Linux portable builds are undergoing exact-package CI acceptance. Manual selectors and optional DeepSeek suggestions remain available. Duplicate creation requests are idempotent. It is not a universal browser agent. A separate Playwright renderer runs bundled synthetic demos only with page network access disabled; real Chromium rendering of 30 bundled synthetic pages passed in GitHub Actions, and previous-version dashboard tests passed. The redesigned v0.3 dashboard requires its own real-browser CI and screenshot acceptance; no full accessibility audit is claimed. Public JavaScript pages, logins, CAPTCHA bypass and hosted multi-user operation are out of scope. Native Windows validation is pending for this milestone; macOS has no portable build. Start with `python -m websheet`; use the 30-page offline demo without any API key.
 
 
-## v0.2 验证状态
+## v0.3 验证状态（本次远程验收待完成）
 
-新增真实 Playwright 仪表盘交互测试：点选字段、预览确认、刷新期间后台运行、重复点击、暂停/继续、历史选择、取消草稿、两种下载内容。测试只用合成数据，不调用付费 API。[GitHub Actions](https://github.com/zihaox-del/open-source-lab/actions/runs/40049894178) 已实际通过 **43 项测试，零跳过**，包括三项真实仪表盘交互测试；Python 3.11–3.13 离线测试也通过。1440 像素桌面合成结果页截图已审阅，未见明显重叠或裁切，但不等于移动端、所有状态或无障碍验收。本机 Chromium 仍受 socket 限制，不能把远程通过误称为本机通过。Windows 原生支持未纳入此版本，macOS/WSL 未验收。
+本次界面改为三个步骤：粘贴网址、点选内容并确认样表、下载结果。新增 Windows/Linux 免 Python 便携包构建和解压后原生可执行文件验收。当前本机发现 **54 项测试，49 通过、5 项真实浏览器测试明确跳过**；本次 CI、Windows 打包验收和新桌面/窄屏截图尚待完成，不将旧版测试结果当作本次通过。验证结果会记录于 [验证记录](docs/VERIFICATION.md)。不需要模型 Key；未调用真实网站或付费模型。

@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import Literal
 from fastapi import FastAPI, HTTPException, Request
@@ -6,12 +5,13 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 from .core import Column, ExtractionError, export_rows, extract, fetch, candidates, discover_links
 from .store import Store
+from .paths import default_db_path
 from .ai import suggest
 
 
 def create_app(db_path=None):
     app = FastAPI(title='WebSheet Agent', docs_url=None, redoc_url=None)
-    store = Store(db_path or os.environ.get('WEBSHEET_DB', 'data/websheet.sqlite3'))
+    store = Store(db_path or default_db_path())
     app.state.store = store
 
     @app.middleware('http')
@@ -37,6 +37,10 @@ def create_app(db_path=None):
     @app.exception_handler(KeyError)
     async def not_found(request, exc):
         return JSONResponse({'detail': '任务不存在'}, status_code=404)
+
+    @app.get('/api/health')
+    def health():
+        return {'status': 'ok', 'app': 'websheet-agent'}
 
     @app.get('/')
     def index():

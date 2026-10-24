@@ -1,4 +1,3 @@
-import fcntl
 import json
 import sqlite3
 import threading
@@ -7,6 +6,7 @@ from contextlib import contextmanager, nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .locking import try_lock
 from .core import ExtractionError, extract, fetch, origin, source_id, validate_columns
 
 
@@ -32,6 +32,8 @@ class Store:
                     db.execute(f'ALTER TABLE jobs ADD COLUMN {name} TEXT')
             db.execute('CREATE UNIQUE INDEX IF NOT EXISTS jobs_request_id ON jobs(request_id)')
             db.execute('UPDATE jobs SET created_at=COALESCE(created_at,?), updated_at=COALESCE(updated_at,?)', (_now(), _now()))
+        self._workers = []
+        self._stopping = threading.Event()
         self._recover()
 
     @contextmanager
@@ -44,13 +46,7 @@ class Store:
             db.close()
 
     def _lock(self):
-        lock = self.path.with_suffix('.lock').open('a')
-        try:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            lock.close()
-            return None
-        return lock
+        return try_lock(self.path.with_suffix('.lock'))
 
     def _recover(self):
         # Only the process holding the OS lock can declare a worker interrupted.
@@ -121,6 +117,8 @@ class Store:
     def _claim(self, job_id):
         # Serialize the tiny claim/status transition across Store instances.
         with _claim_guard:
+            if self._stopping.is_set():
+                raise ExtractionError('服务正在停止，请重启后继续任务')
             return self._claim_locked(job_id)
 
     def _claim_locked(self, job_id):
@@ -148,6 +146,7 @@ class Store:
         if lock is not None:
             worker = threading.Thread(target=self._background, args=(job_id, lock, fetcher), daemon=True, name=f'websheet-{job_id}')
             try:
+                self._workers.append(worker)
                 worker.start()
             except BaseException:
                 self._set_interrupted(job_id, '任务未能启动，请重试')
@@ -192,7 +191,7 @@ class Store:
                             continue
                         with self.connect() as db:
                             status = db.execute('SELECT status FROM jobs WHERE id=?', (job_id,)).fetchone()[0]
-                            if status == 'pausing':
+                            if status == 'pausing' or self._stopping.is_set():
                                 db.execute('UPDATE jobs SET status=?,updated_at=? WHERE id=?', ('paused', _now(), job_id))
                                 break
                         try:
@@ -212,3 +211,11 @@ class Store:
                 self._set_interrupted(job_id, message)
                 raise
             return self.get(job_id)
+
+    def shutdown(self):
+        """Finish the current row, preserve pending rows, then release all locks."""
+        with _claim_guard:
+            self._stopping.set()
+        for worker in self._workers:
+            if worker.ident is not None:
+                worker.join()
