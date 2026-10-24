@@ -16,15 +16,15 @@ v0.3 早期可运行版本，不是“万能浏览器代理”。适合整理有
 | 引擎 | 实际行为 | 状态 |
 | --- | --- | --- |
 | 静态 HTML | 读取公开 HTTPS 网页并按规则提取，不执行 JS | 离线端到端与安全测试通过；未对真实网站做兼容性承诺 |
-| 浏览器演示 | Playwright 执行内置合成页 JS、读取渲染后 DOM；所有页面网络请求禁用 | GitHub Actions 已通过真实 Chromium 合成页 JS 渲染测试；v0.2 真实仪表盘流程测试通过；桌面合成结果页截图已审阅 |
+| 浏览器演示 | Playwright 执行内置合成页 JS、读取渲染后 DOM；所有页面网络请求禁用 | GitHub Actions 已通过真实 Chromium 合成页 JS 渲染测试；v0.3 四项真实仪表盘流程测试通过；桌面及 390px 窄屏合成状态截图已审阅 |
 
 浏览器演示仅接受 `demo://catalog/1` 至 `demo://catalog/99`，不是公网浏览器采集功能。不能声称完成了真实网站浏览器自动化。GitHub Actions 已验证内置合成页真实渲染；下一阶段仍需扩展多视口/无障碍验收及面向公网的出站隔离，才能考虑公开动态页。
 
-## 普通用户：免 Python 便携包（构建验收中）
+## 普通用户：免 Python 便携包（Windows / Linux）
 
-本仓库新增 Windows 原生便携包构建流程。**源码测试通过不等于 Windows 安装包已验收**：只有对应提交的「Portable desktop bundles」流水线全部通过后，才使用它产生的 ZIP；尚未签名，也不是可信安装器或正式稳定发行版。
+Windows x64 和 Linux x86_64 已通过原生构建及**实际 ZIP 解压后的可执行文件验收**，不需要安装 Python。下载 [已验证的构建产物](https://github.com/zihaox-del/open-source-lab/actions/runs/40052433273)；它们是早期试用包，尚未代码签名，不是正式稳定发行版。macOS 便携包暂未提供。
 
-1. 在仓库 Actions 的「Portable desktop bundles」成功运行页面下载对应系统的产物（下载 Actions 产物通常需要登录 GitHub）。
+1. 在上述成功运行页面下载 `websheet-agent-Windows-X64` 或 `websheet-agent-Linux-X64`（Actions 下载通常需要登录 GitHub；产物保留 14 天）。下载物是外层产物 ZIP，先解压得到应用 ZIP 和同名 `.sha256`，再完整解压应用 ZIP。
 2. 完整解压 ZIP 到自己可读的位置，不要直接在压缩软件里运行，也不要只复制 `.exe`。
 3. Windows 双击 `WebSheet-Agent.exe`，启动成功后自动打开本机浏览器。无需管理员权限，无需安装 Python、浏览器自动化组件或填写 Key。
 4. 保留启动窗口，按下方“第一次使用”完成合成数据演示。停止时在启动窗口按 Ctrl+C，等待窗口退出；关掉网页不会停止采集。
@@ -127,9 +127,13 @@ MIT © 2026 zihaox-del and WebSheet Agent contributors。欢迎小范围、可�
 
 ## English summary
 
-WebSheet Agent is an original, local-first MVP for reviewed static-page extraction into traceable CSV/XLSX files. Version 0.3 introduces a three-stage first-use flow with one URL input, text-value selection, automatic sample preview and an explicit start confirmation. Persistent history, bounded same-origin link discovery and cooperative pause/resume remain available. Native Windows/Linux portable builds are undergoing exact-package CI acceptance. Manual selectors and optional DeepSeek suggestions remain available. Duplicate creation requests are idempotent. It is not a universal browser agent. A separate Playwright renderer runs bundled synthetic demos only with page network access disabled; real Chromium rendering of 30 bundled synthetic pages passed in GitHub Actions, and previous-version dashboard tests passed. The redesigned v0.3 dashboard requires its own real-browser CI and screenshot acceptance; no full accessibility audit is claimed. Public JavaScript pages, logins, CAPTCHA bypass and hosted multi-user operation are out of scope. Native Windows validation is pending for this milestone; macOS has no portable build. Start with `python -m websheet`; use the 30-page offline demo without any API key.
+WebSheet Agent is an original, local-first MVP for reviewed static-page extraction into traceable CSV/XLSX files. Version 0.3 introduces a three-stage first-use flow with one URL input, text-value selection, automatic sample preview and an explicit start confirmation. Persistent history, bounded same-origin link discovery and cooperative pause/resume remain available. Native Windows x64 and Linux x86_64 portable bundles passed exact-ZIP executable smoke tests without Python on PATH. They are unsigned early test builds, not a signed installer or a guarantee for every machine. Manual selectors and optional DeepSeek suggestions remain available. Duplicate creation requests are idempotent. It is not a universal browser agent. A separate Playwright renderer runs bundled synthetic demos only with page network access disabled; real Chromium rendering of 30 bundled synthetic pages passed in GitHub Actions, and previous-version dashboard tests passed. The redesigned v0.3 dashboard passed four real-browser workflow tests and desktop/390px synthetic-state screenshot review; no full accessibility audit is claimed. Public JavaScript pages, logins, CAPTCHA bypass and hosted multi-user operation are out of scope. Native Windows validation passed on the CI runner; macOS has no portable build. Start with `python -m websheet`; use the 30-page offline demo without any API key.
 
 
-## v0.3 验证状态（本次远程验收待完成）
+## v0.3 验证状态
 
-本次界面改为三个步骤：粘贴网址、点选内容并确认样表、下载结果。新增 Windows/Linux 免 Python 便携包构建和解压后原生可执行文件验收。当前本机发现 **54 项测试，49 通过、5 项真实浏览器测试明确跳过**；本次 CI、Windows 打包验收和新桌面/窄屏截图尚待完成，不将旧版测试结果当作本次通过。验证结果会记录于 [验证记录](docs/VERIFICATION.md)。不需要模型 Key；未调用真实网站或付费模型。
+[测试流水线](https://github.com/zihaox-del/open-source-lab/actions/runs/40052433129) 的真实 Chromium 作业 **59 项测试全部通过，零跳过**；Python 3.11–3.13 离线作业也通过（54 通过、5 项浏览器测试明确跳过）。四项真实仪表盘流程覆盖三步上手、自动样表、重复点击、刷新、暂停/继续、历史、实际下载、读取失败/无候选以及迟到的异步结果。
+
+[Windows/Linux 打包验收](https://github.com/zihaox-del/open-source-lab/actions/runs/40052433273) 实际运行 ZIP 解压后的程序，验证不依赖 PATH 中的 Python、30 条合成采集、两种导出、端口冲突拒绝、正常停止和重启恢复。下载包的 SHA256、界面源码和实际原生依赖声明已核对。
+
+桌面及 390px 窄屏的输入、点选、完成/部分失败状态截图已审阅，未见阻挡主要操作的重叠或裁切；宽表格需要横向滚动，不代表所有设备或无障碍验收。未验证真实网站兼容性、付费模型、macOS 或所有 Windows 版本。无需模型 Key。详见 [验证记录](docs/VERIFICATION.md)。
