@@ -2,6 +2,15 @@
 
 This record describes actual execution, not planned coverage.
 
+## Static reliability follow-up (local, awaiting new CI)
+
+- Local Python 3.12: 74 discovered tests, 68 passed, 6 browser tests explicitly skipped. Compile, JavaScript syntax check and 30-page offline XLSX demo passed.
+- 14 new offline regression tests cover real `fetch` control flow with mocked HTTP bytes/headers: UTF-8 Chinese, GB18030/GBK, Windows-1252, HTTP-over-meta precedence, BOM/meta/UTF-8 fallback, XHTML declaration, malformed/unsupported encoding and invalid bytes. They do not prove arbitrary-site compatibility or detect every incorrect-but-decodable charset declaration.
+- Candidate tests cover complete inline headings, explicit inline hidden ancestors, navigation starvation, the 100-result/5,000-element inspection limits, API metadata, same-origin base resolution, fragment deduplication, cross-origin base rejection and exact link-limit behavior. Selector uniqueness still does not prove semantic correctness: an explicit index-drift counterexample returns the wrong value and is retained as a regression demonstrating the limitation.
+- Added a fifth dashboard flow for visible actionable candidate/link truncation hints, nested-heading preview and clearing the warning on a new sample. It uses an explicitly synthetic HTML response, not a live website.
+- Opt-in local real-Chromium execution was attempted and failed at browser startup with `socket() failed: Operation not permitted`; both renderer and dashboard setup errored. The new dashboard test has NOT passed locally. Existing historical browser/portable CI results below do not validate these new changes; new CI remains required before claiming those passes.
+- No new paid model call, private data, redirect/compression support, failure-retry UI or multi-page preview was added. Portable packaging sources and OS-specific locking were unchanged.
+
 ## v0.3 verified source and workflows
 
 Qualified source: `aee7e1ea1ddfa846b40c5f1715d7e9d41be26e23`.

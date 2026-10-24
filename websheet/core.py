@@ -1,5 +1,8 @@
 """Bounded static-HTML extraction. No JavaScript, cookies or authenticated browser."""
 import csv
+import codecs
+from email.message import Message
+from html.parser import HTMLParser
 import hashlib
 import http.client
 import io
@@ -108,6 +111,61 @@ class PinnedHTTPS(http.client.HTTPSConnection):
             raise
 
 
+# Explicit text codecs only: never invoke Python transformation codecs on web input.
+TEXT_ENCODINGS = {
+    'utf-8', 'utf-8-sig', 'utf-16', 'utf-16-le', 'utf-16-be',
+    'ascii', 'iso8859-1', 'iso8859-15', 'cp1252', 'cp1251',
+    'gb18030', 'gbk', 'gb2312', 'big5', 'shift_jis', 'euc_jp',
+    'iso2022_jp', 'euc_kr', 'cp949', 'koi8-r',
+}
+
+class _MetaCharset(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.charset = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag != 'meta' or self.charset is not None:
+            return
+        attrs = dict(attrs)
+        if 'charset' in attrs:
+            self.charset = attrs['charset'] or ''
+        elif (attrs.get('http-equiv') or '').lower() == 'content-type':
+            header = Message()
+            header['Content-Type'] = attrs.get('content') or ''
+            self.charset = header.get_param('charset')
+
+
+def decode_html(data, declared=None):
+    """Strict HTTP charset > BOM > first 4096-byte meta > UTF-8 fallback.
+
+    This is a bounded static parser policy, not browser encoding sniffing. Invalid
+    declarations and byte sequences fail visibly instead of saving replacement text.
+    """
+    encoding = declared
+    if encoding is None:
+        if data.startswith(codecs.BOM_UTF8):
+            encoding = 'utf-8-sig'
+        elif data.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
+            encoding = 'utf-16'
+        else:
+            sniff = _MetaCharset()
+            sniff.feed(data[:4096].decode('latin-1'))
+            encoding = sniff.charset if sniff.charset is not None else 'utf-8'
+    try:
+        if not isinstance(encoding, str) or len(encoding) > 80:
+            raise LookupError()
+        codec = codecs.lookup(encoding.strip()).name
+        if codec not in TEXT_ENCODINGS:
+            raise LookupError()
+    except (LookupError, ValueError) as exc:
+        raise ExtractionError('网页声明了不支持的字符编码；请检查 HTTP charset 或 HTML meta') from exc
+    try:
+        return data.decode(codec, errors='strict').lstrip('\ufeff')
+    except UnicodeError as exc:
+        raise ExtractionError('网页字节与字符编码不符；未保存乱码，请检查 charset 声明') from exc
+
+
 def fetch(url):
     site = origin(url)
     if site == 'demo://catalog':
@@ -119,18 +177,21 @@ def fetch(url):
     connection = PinnedHTTPS(p.hostname, addresses[0])
     try:
         connection.request('GET', (p.path or '/') + ('?' + p.query if p.query else ''), headers={
-            'User-Agent': 'WebSheet-Agent/0.2 (static HTML extraction)', 'Accept': 'text/html', 'Accept-Encoding': 'identity'})
+            'User-Agent': 'WebSheet-Agent/0.3.1 (static HTML extraction)', 'Accept': 'text/html', 'Accept-Encoding': 'identity'})
         response = connection.getresponse()
         if response.status != 200:
             raise ExtractionError(f'HTTP {response.status}；重定向不自动跟随')
-        if response.getheader('Content-Type', '').split(';')[0].strip().lower() not in ('text/html', 'application/xhtml+xml'):
+        content_type = response.getheader('Content-Type', '')
+        if content_type.split(';')[0].strip().lower() not in ('text/html', 'application/xhtml+xml'):
             raise ExtractionError('目标不是 HTML 页面')
         if response.getheader('Content-Encoding', 'identity').lower() != 'identity':
             raise ExtractionError('不支持压缩响应')
         data = response.read(MAX_BYTES + 1)
         if len(data) > MAX_BYTES:
             raise ExtractionError('页面超过 1 MB 限制')
-        return data
+        header = Message()
+        header['Content-Type'] = content_type
+        return decode_html(data, header.get_param('charset'))
     except (OSError, http.client.HTTPException) as exc:
         raise ExtractionError('网页连接失败') from exc
     finally:
@@ -140,6 +201,10 @@ def fetch(url):
 def document(content):
     if not content or len(content) > MAX_BYTES:
         raise ExtractionError('页面为空或过大')
+    if isinstance(content, bytes):
+        content = decode_html(content)
+    # lxml rejects an XML encoding declaration on already-decoded Unicode.
+    content = re.sub(r'^\s*<\?xml\s[^?]*\?>', '', content, count=1)
     try:
         return html.fromstring(content, parser=html.HTMLParser(no_network=True))
     except (ValueError, TypeError) as exc:
@@ -195,24 +260,47 @@ def export_rows(job, fmt):
     return stream.getvalue()
 
 
-def candidates(content):
-    """Return text-only choices. No fetched HTML ever enters the dashboard DOM."""
+def _hidden(node):
+    if node.tag in {'script', 'style', 'template', 'noscript', 'head'} or node.get('hidden') is not None:
+        return True
+    # Only explicit inline declarations, not computed/external CSS visibility.
+    style = re.sub(r'/\*.*?\*/', '', node.get('style', ''), flags=re.S)
+    return bool(re.search(r'(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*hidden)\s*(?:!important\s*)?(?:;|$)', style, re.I))
+
+
+def candidate_report(content):
+    """Bounded text-only choices; content precedes navigation, not semantic inference."""
     tree = document(content)
-    result = []
-    for node in tree.iter():
-        if node.tag not in {'h1', 'h2', 'h3', 'p', 'span', 'a', 'td', 'th', 'li', 'dt', 'dd', 'strong', 'div'}:
+    buckets = [[], []]
+    scan_limited = False
+    allowed = {'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'span', 'a', 'td', 'th', 'li', 'dt', 'dd', 'strong', 'div'}
+    inline = {'b', 'i', 'em', 'small', 'br', 'span', 'strong', 'a', 'u', 's', 'sub', 'sup', 'mark'}
+    for index, node in enumerate(tree.iter()):
+        if index >= 5000:
+            scan_limited = True
+            break
+        if node.tag not in allowed:
             continue
-        if any(a.tag in {'script', 'style', 'template', 'noscript', 'head'} or a.get('hidden') is not None for a in [node, *node.iterancestors()]):
+        ancestors = [node, *node.iterancestors()]
+        if any(_hidden(a) for a in ancestors):
             continue
-        if any(isinstance(child.tag, str) and child.tag not in {'b', 'i', 'em', 'small', 'br'} for child in node):
+        # Preserve complete heading/paragraph text with nested inline markup.
+        if any(isinstance(child.tag, str) and (child.tag not in inline or _hidden(child)) for child in node.iterdescendants()):
             continue
         value = ' '.join(node.text_content().split())
         if not value or len(value) > 1000:
             continue
+        navigation = node.tag == 'a' or any(a.tag == 'nav' or a.get('role') == 'navigation' for a in ancestors)
+        bucket = buckets[int(navigation)]
+        # An extra item establishes truncation without retaining an unbounded list.
+        if len(bucket) < 101:
+            bucket.append((node, value))
+    result = []
+    for node, value in buckets[0] + buckets[1]:
         choices = [node.tag]
         if node.get('id'):
             choices.insert(0, '#' + node.get('id'))
-        choices += [node.tag + '.' + c for c in node.get('class', '').split()]
+        choices += [node.tag + '.' + c for c in node.get('class', '').split()[:20]]
         selector = next((c for c in choices if supported_selector(c) and len(select(tree, c)) == 1), None)
         if not selector:
             parts = []
@@ -225,27 +313,46 @@ def candidates(content):
         if len(selector) > 500 or not supported_selector(selector) or len(select(tree, selector)) != 1:
             continue
         result.append({'value': value, 'selector': selector, 'attribute': 'text', 'tag': node.tag})
-        if len(result) == 100:
+        if len(result) > 100:
             break
-    return result
+    return {'candidates': result[:100], 'truncated': scan_limited or len(result) > 100 or any(len(b) == 101 for b in buckets),
+            'limit': 100, 'scan_limited': scan_limited}
 
 
-def discover_links(content, url):
+def candidates(content):
+    return candidate_report(content)['candidates']
+
+
+def link_report(content, url):
     site = origin(url)
+    tree = document(content)
+    base = url
+    bases = tree.xpath('//base[@href]')
+    if bases:
+        try:
+            base = urldefrag(urljoin(url, bases[0].get('href').strip()))[0]
+            if origin(base) != site:
+                raise ExtractionError('列表页使用跨站 base 地址；请直接粘贴同站详情网址')
+        except ValueError as exc:
+            raise ExtractionError('列表页 base 地址无效；请直接粘贴详情网址') from exc
     links = []
     seen = set()
-    for node in document(content).iter('a'):
+    for node in tree.iter('a'):
         href = node.get('href', '').strip()
         if not href or href.startswith('#'):
             continue
         try:
-            target = urldefrag(urljoin(url, href))[0]
+            target = urldefrag(urljoin(base, href))[0]
             if origin(target) != site or target in seen or target == url:
                 continue
         except (ExtractionError, ValueError):
             continue
         seen.add(target)
         links.append({'url': target, 'label': ' '.join(node.text_content().split())[:160] or target})
-        if len(links) == 100:
+        if len(links) > 100:
             break
-    return links
+    return {'links': links[:100], 'truncated': len(links) > 100, 'limit': 100}
+
+
+def discover_links(content, url):
+    return link_report(content, url)['links']

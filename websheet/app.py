@@ -3,7 +3,7 @@ from typing import Literal
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
-from .core import Column, ExtractionError, export_rows, extract, fetch, candidates, discover_links
+from .core import Column, ExtractionError, export_rows, extract, fetch, candidate_report, link_report
 from .store import Store
 from .paths import default_db_path
 from .ai import suggest
@@ -55,11 +55,11 @@ def create_app(db_path=None):
 
     @app.post('/api/inspect')
     def inspect(body: Sample):
-        return {'candidates': candidates(fetch(body.url))}
+        return candidate_report(fetch(body.url))
 
     @app.post('/api/discover')
     def discover(body: Sample):
-        return {'links': discover_links(fetch(body.url), body.url)}
+        return link_report(fetch(body.url), body.url)
 
     @app.get('/api/jobs')
     def history():

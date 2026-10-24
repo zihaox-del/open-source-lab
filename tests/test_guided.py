@@ -31,7 +31,7 @@ class GuidedTests(unittest.TestCase):
         self.assertFalse(any('evil()' == c['value'] or 'Hidden' == c['value'] for c in choices))
 
     def test_discovery_same_origin_deduplicated_capped(self):
-        content = '''<base href="https://evil.example/"><a href="/one">One</a><a href="/one#part">Duplicate</a><a href="https://other.example/two">Other</a><a href="javascript:alert(1)">JS</a><a href="https://user:pass@example.org/x">Credentials</a><a href="https://[broken">Broken</a><a href="#part">Fragment</a>'''
+        content = '''<a href="/one">One</a><a href="/one#part">Duplicate</a><a href="https://other.example/two">Other</a><a href="javascript:alert(1)">JS</a><a href="https://user:pass@example.org/x">Credentials</a><a href="https://[broken">Broken</a><a href="#part">Fragment</a>'''
         links = discover_links(content, 'https://example.org/list')
         self.assertEqual(links, [{'url':'https://example.org/one', 'label':'One'}])
         many = ''.join(f'<a href="/{n}">{n}</a>' for n in range(150))

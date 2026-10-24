@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "classification": "external_network_fixture_not_customer_adoption",
+  "verified_at": "2026-10-24",
+  "source_permission": "https://toscrape.com/",
+  "robots_url": "https://books.toscrape.com/robots.txt",
+  "robots_observed_status": 404,
+  "origin": "https://books.toscrape.com",
+  "fields": [
+    {
+      "name": "title",
+      "selector": "h1"
+    },
+    {
+      "name": "price",
+      "selector": "html > body > div > div > div:nth-of-type(2) > div:nth-of-type(2) > article > div:nth-of-type(1) > div:nth-of-type(2) > p:nth-of-type(1)"
+    },
+    {
+      "name": "upc",
+      "selector": "html > body > div > div > div:nth-of-type(2) > div:nth-of-type(2) > article > table > tr:nth-of-type(1) > td"
+    }
+  ],
+  "cases": [
+    {
+      "url": "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html",
+      "expected": {
+        "title": "A Light in the Attic",
+        "price": "£51.77",
+        "upc": "a897fe39b1053632"
+      }
+    },
+    {
+      "url": "https://books.toscrape.com/catalogue/tipping-the-velvet_999/index.html",
+      "expected": {
+        "title": "Tipping the Velvet",
+        "price": "£53.74",
+        "upc": "90fa61229261140a"
+      }
+    },
+    {
+      "url": "https://books.toscrape.com/catalogue/soumission_998/index.html",
+      "expected": {
+        "title": "Soumission",
+        "price": "£50.10",
+        "upc": "6957f44c3847a760"
+      }
+    }
+  ],
+  "policy": {
+    "max_requests": 4,
+    "requests": "One robots preflight plus three fixed detail pages; zero retries or crawling",
+    "minimum_interval_seconds": 2,
+    "transport": "Unmodified websheet.core.fetch; HTTPS, public pinned DNS, no redirects, cookies, JS or compressed responses",
+    "drift": "Exact expectations are observed fixture values, not real prices or permanent guarantees. Mismatch requires manual classification and review, never silent rebaseline."
+  },
+  "verification_limit": "Expected values verified from current official pages and raw public HTML through research transport; current core.fetch cannot resolve DNS in this environment. Full production-transport pass is pending."
+}

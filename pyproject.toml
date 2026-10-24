@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "websheet-agent"
-version = "0.3.0"
+version = "0.3.1"
 description = "Local-first, reviewed static HTML extraction to traceable spreadsheets"
 requires-python = ">=3.11"
 license = "MIT"

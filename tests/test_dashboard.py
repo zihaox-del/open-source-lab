@@ -39,6 +39,8 @@ import time
 import websheet.core as core
 original_fetch = core.fetch
 def synthetic_fetch(url):
+    if url == 'https://example.org/limits':
+        return '<html><body><nav>' + ''.join(f'<a href="/{i}">Menu {i}</a>' for i in range(150)) + '</nav><h1>Product <span>Alpha</span></h1></body></html>'
     if core.origin(url) != 'demo://catalog':
         raise core.ExtractionError('Dashboard QA permits synthetic catalog only')
     time.sleep(0.06)
@@ -311,3 +313,22 @@ uvicorn.run('websheet.app:create_app', factory=True, host='127.0.0.1',
         self.page.locator('#inspect').click()
         self.expect(self.page.locator('#choose-stage')).to_be_visible()
         self.expect(self.page.locator('#engine')).to_have_value('static')
+
+    def test_candidate_and_link_limits_are_actionable(self):
+        self.page.locator('#urls').fill('https://example.org/limits')
+        self.page.locator('#discovery summary').click()
+        self.page.locator('#discover').click()
+        self.expect(self.page.locator('#links input')).to_have_count(100)
+        self.expect(self.page.locator('#message')).to_contain_text('超过 100 个')
+        self.expect(self.page.locator('#message')).to_contain_text('直接粘贴')
+        self.page.locator('#inspect').click()
+        self.expect(self.page.locator('#candidate-limit')).to_be_visible()
+        self.expect(self.page.locator('#candidate-limit')).to_contain_text('高级选项')
+        self.expect(self.page.locator('#candidates button').first).to_have_text('选择 Product Alpha')
+        self.page.locator('#candidates button').first.click()
+        self.expect(self.page.locator('#preview-grid')).to_contain_text('Product Alpha')
+        self.expect(self.page.locator('#run')).to_be_enabled()
+        self.page.locator('#cancel-fields').click()
+        self.page.locator('#demo').click()
+        self.expect(self.page.locator('#choose-stage')).to_be_visible()
+        self.expect(self.page.locator('#candidate-limit')).to_be_hidden()
