@@ -47,7 +47,7 @@ def synthetic_fetch(url):
     time.sleep(0.06)
     reads[url] = reads.get(url, 0) + 1
     if url == 'demo://catalog/96' and reads[url] > 1:
-        return '<h1>合成变化页面</h1><span id="sku">REPAIRED-96</span>'
+        return '<h1>合成变化页面</h1><p id="sku">REPAIRED-96</p>'
     if url in ('demo://catalog/91', 'demo://catalog/92', 'demo://catalog/93'):
         value = '广告横幅，不是价格' if url.endswith('/92') else ('11.00' if url.endswith('/91') else '33.00')
         return '<html><body><h1>布局样本</h1><p>简介</p><p>' + value + '</p></body></html>'

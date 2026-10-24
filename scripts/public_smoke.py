@@ -28,6 +28,7 @@ def main():
     if not args.allow_public_network:
         ap.error('requires explicit --allow-public-network; default makes zero requests')
     sys.path.insert(0, str(args.project.resolve()))
+    from websheet import __version__
     from websheet.core import Column, PinnedHTTPS, public_addresses, fetch, extract
     urls = [BASE + '/catalogue/' + slug + '/index.html' for slug, _ in CASES]
     fields = [Column(**field) for field in FIELDS]
@@ -35,7 +36,7 @@ def main():
     # proxy fallback, cookie handling, JavaScript, retries, or resource loading.
     c = PinnedHTTPS('books.toscrape.com', public_addresses('books.toscrape.com')[0])
     try:
-        c.request('GET', '/robots.txt', headers={'User-Agent': 'WebSheet-Agent/0.3.1 (static HTML extraction)', 'Accept-Encoding': 'identity'})
+        c.request('GET', '/robots.txt', headers={'User-Agent': f'WebSheet-Agent/{__version__} (static HTML extraction)', 'Accept-Encoding': 'identity'})
         r = c.getresponse()
         if r.status == 200:
             if r.getheader('Content-Encoding', 'identity').lower() != 'identity':

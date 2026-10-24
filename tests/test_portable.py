@@ -12,6 +12,7 @@ import time
 import unittest
 from unittest.mock import patch
 
+from websheet import __version__
 from websheet.launcher import main, open_when_ready, reserve_socket, self_check
 from websheet.locking import try_lock
 from websheet.paths import default_db_path
@@ -108,13 +109,41 @@ sys.stdin.read()
         server = type('Server', (), {'started': True})()
         stop = threading.Event()
         with patch('websheet.launcher.webbrowser.open') as browser, patch('websheet.launcher.urllib.request.build_opener') as opener:
-            opener.return_value.open.return_value = io.StringIO(json.dumps({'status': 'ok', 'app': 'websheet-agent'}))
+            opener.return_value.open.return_value = io.StringIO(json.dumps({'status': 'ok', 'app': 'websheet-agent', 'version': __version__}))
             thread = threading.Thread(target=open_when_ready, args=(server, 'http://127.0.0.1:8765', stop))
             thread.start()
             thread.join(timeout=3)
             stop.set()
             self.assertFalse(thread.is_alive())
             browser.assert_called_once_with('http://127.0.0.1:8765')
+
+    def test_health_contract_matches_actual_api_and_rejects_old_version(self):
+        from fastapi.testclient import TestClient
+        from websheet.app import create_app
+        from scripts import smoke_portable
+        with tempfile.TemporaryDirectory() as tmp:
+            with TestClient(create_app(Path(tmp) / 'health.sqlite3'), base_url='http://127.0.0.1') as client:
+                actual = client.get('/api/health').json()
+        self.assertEqual(actual, {'status': 'ok', 'app': 'websheet-agent', 'version': __version__})
+        self.assertEqual(smoke_portable.EXPECTED_VERSION, __version__)
+        server = type('Server', (), {'started': True})()
+        stop = threading.Event()
+        responses = [dict(actual, version='0.0.0'), actual]
+        with patch('websheet.launcher.webbrowser.open') as browser, patch('websheet.launcher.urllib.request.build_opener') as opener:
+            opener.return_value.open.side_effect = [io.StringIO(json.dumps(value)) for value in responses]
+            thread = threading.Thread(target=open_when_ready, args=(server, 'http://127.0.0.1:8765', stop))
+            thread.start()
+            thread.join(timeout=3)
+            stop.set()
+            self.assertFalse(thread.is_alive())
+            self.assertEqual(opener.return_value.open.call_count, 2)
+            browser.assert_called_once()
+        with patch.object(smoke_portable.subprocess, 'Popen') as popen, patch.object(smoke_portable, 'request', side_effect=responses) as request, patch.object(smoke_portable.time, 'sleep'):
+            popen.return_value.poll.return_value = None
+            process, base = smoke_portable.start('fake-executable', {}, '.', 8765, None)
+            self.assertIs(process, popen.return_value)
+            self.assertEqual(base, 'http://127.0.0.1:8765')
+            self.assertEqual(request.call_count, 2)
 
     def test_shutdown_finishes_current_row_and_preserves_pending_rows(self):
         with tempfile.TemporaryDirectory() as tmp:

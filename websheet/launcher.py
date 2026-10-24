@@ -1,4 +1,5 @@
 """Portable local launcher. No installations, global settings, or remote listeners."""
+from . import __version__
 import argparse
 import io
 import json
@@ -38,7 +39,7 @@ def open_when_ready(server, url, stop):
         try:
             with opener.open(url + '/api/health', timeout=1) as response:
                 result = json.load(response)
-            if result == {'status': 'ok', 'app': 'websheet-agent'} and not stop.is_set():
+            if result == {'status': 'ok', 'app': 'websheet-agent', 'version': __version__} and not stop.is_set():
                 webbrowser.open(url)
                 return
         except (OSError, ValueError):

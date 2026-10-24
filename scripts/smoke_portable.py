@@ -18,6 +18,7 @@ import urllib.request
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
+EXPECTED_VERSION = tomllib.loads((ROOT / 'pyproject.toml').read_text(encoding='utf-8'))['project']['version']
 
 
 def request(base, path, body=None):
@@ -52,7 +53,7 @@ def start(exe, env, cwd, port, log):
         if process.poll() is not None:
             raise AssertionError(f'Packaged process exited during startup: {process.returncode}')
         try:
-            if request(base, '/api/health') == {'status': 'ok', 'app': 'websheet-agent'}:
+            if request(base, '/api/health') == {'status': 'ok', 'app': 'websheet-agent', 'version': EXPECTED_VERSION}:
                 return process, base
         except (OSError, ValueError):
             pass

@@ -38,6 +38,16 @@ class ReviewRetryTests(unittest.TestCase):
             return fetch(url)
         return self.store.run(parent['id'], read)
 
+    def test_changed_retry_fixture_really_fails_generated_price_rule(self):
+        from websheet.core import candidate_report, fetch, extract
+        candidates = candidate_report(fetch('demo://catalog/1'))['candidates']
+        price = next(c for c in candidates if c['value'] == '13.00')
+        field = Column(name='价格', selector=price['selector'])
+        changed = '<h1>合成变化页面</h1><p id="sku">REPAIRED-96</p>'
+        with self.assertRaises(ExtractionError):
+            extract(changed, [field])
+        self.assertEqual(extract(changed, [Column(name='价格', selector='#sku')]), {'价格': 'REPAIRED-96'})
+
     def test_deterministic_deduplicated_first_middle_last_actual_values(self):
         with patch('websheet.app.fetch', wraps=fetch) as read:
             review = self.review({**self.config, 'urls': self.urls + self.urls[:1]})
