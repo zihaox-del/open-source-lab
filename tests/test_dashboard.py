@@ -197,7 +197,16 @@ uvicorn.run('websheet.app:create_app', factory=True, host='127.0.0.1',
         self.assert_downloads()
         artifacts = Path(__file__).resolve().parents[1] / 'test-artifacts'
         artifacts.mkdir(exist_ok=True)
-        self.page.screenshot(path=str(artifacts / 'dashboard.png'), full_page=True)
+        # Completion text updates before the 0.3-second progress transition ends.
+        # Capture settled evidence, not a misleading partly filled completion bar.
+        self.page.wait_for_function('''() => {
+            const bar = document.getElementById('bar');
+            return bar.style.width === '100%' &&
+                Math.abs(bar.getBoundingClientRect().width -
+                         bar.parentElement.getBoundingClientRect().width) < 1;
+        }''')
+        self.page.screenshot(path=str(artifacts / 'dashboard.png'), full_page=True,
+                             animations='disabled')
 
     def test_draft_cancel_pause_resume_and_history(self):
         self.load_demo()

@@ -16,9 +16,9 @@ v0.2 早期可运行版本，不是“万能浏览器代理”。适合整理有
 | 引擎 | 实际行为 | 状态 |
 | --- | --- | --- |
 | 静态 HTML | 读取公开 HTTPS 网页并按规则提取，不执行 JS | 离线端到端与安全测试通过；未对真实网站做兼容性承诺 |
-| 浏览器演示 | Playwright 执行内置合成页 JS、读取渲染后 DOM；所有页面网络请求禁用 | GitHub Actions 已通过真实 Chromium 合成页 JS 渲染测试；v0.2 新增真实仪表盘 DOM 测试，尚待 CI 执行和截图审阅 |
+| 浏览器演示 | Playwright 执行内置合成页 JS、读取渲染后 DOM；所有页面网络请求禁用 | GitHub Actions 已通过真实 Chromium 合成页 JS 渲染测试；v0.2 真实仪表盘流程测试通过；桌面合成结果页截图已审阅 |
 
-浏览器演示仅接受 `demo://catalog/1` 至 `demo://catalog/99`，不是公网浏览器采集功能。不能声称完成了真实网站浏览器自动化。GitHub Actions 已验证内置合成页真实渲染；下一阶段仍需完成 v0.2 界面验收及面向公网的出站隔离，才能考虑公开动态页。
+浏览器演示仅接受 `demo://catalog/1` 至 `demo://catalog/99`，不是公网浏览器采集功能。不能声称完成了真实网站浏览器自动化。GitHub Actions 已验证内置合成页真实渲染；下一阶段仍需扩展多视口/无障碍验收及面向公网的出站隔离，才能考虑公开动态页。
 
 ## 快速开始（Linux / macOS，Python 3.11+）
 
@@ -111,9 +111,9 @@ MIT © 2026 zihaox-del and WebSheet Agent contributors。欢迎小范围、可�
 
 ## English summary
 
-WebSheet Agent is an original, local-first MVP for reviewed static-page extraction into traceable CSV/XLSX files. Version 0.2 adds a Chinese no-CSS text-value picker, bounded same-origin list-page link discovery, persistent job history, background progress and cooperative pause/resume. Manual selectors and optional DeepSeek suggestions remain available. Duplicate creation requests are idempotent. It is not a universal browser agent. A separate Playwright renderer runs bundled synthetic demos only with page network access disabled; real Chromium rendering of 30 bundled synthetic pages passed in GitHub Actions, while dashboard visual QA remains unverified. Public JavaScript pages, logins, CAPTCHA bypass, Windows-native and hosted multi-user operation are out of scope. Start with `python -m websheet`; use the 30-page offline demo without any API key.
+WebSheet Agent is an original, local-first MVP for reviewed static-page extraction into traceable CSV/XLSX files. Version 0.2 adds a Chinese no-CSS text-value picker, bounded same-origin list-page link discovery, persistent job history, background progress and cooperative pause/resume. Manual selectors and optional DeepSeek suggestions remain available. Duplicate creation requests are idempotent. It is not a universal browser agent. A separate Playwright renderer runs bundled synthetic demos only with page network access disabled; real Chromium rendering of 30 bundled synthetic pages passed in GitHub Actions, and real dashboard acceptance tests passed; one desktop synthetic-result screenshot was visually reviewed, not a full responsive/accessibility audit. Public JavaScript pages, logins, CAPTCHA bypass, Windows-native and hosted multi-user operation are out of scope. Start with `python -m websheet`; use the 30-page offline demo without any API key.
 
 
 ## v0.2 验证状态
 
-新增真实 Playwright 仪表盘交互测试：点选字段、预览确认、刷新期间后台运行、重复点击、暂停/继续、历史选择、取消草稿、两种下载内容。测试只用合成数据，不调用付费 API。当前本机 Chromium 因环境 socket 限制无法启动，**不将未运行交互测试算作通过**；CI 执行和合成截图人工审阅是发布验收门槛。Windows 原生支持未纳入此版本，macOS/WSL 未验收。
+新增真实 Playwright 仪表盘交互测试：点选字段、预览确认、刷新期间后台运行、重复点击、暂停/继续、历史选择、取消草稿、两种下载内容。测试只用合成数据，不调用付费 API。[GitHub Actions](https://github.com/zihaox-del/open-source-lab/actions/runs/40049894178) 已实际通过 **43 项测试，零跳过**，包括三项真实仪表盘交互测试；Python 3.11–3.13 离线测试也通过。1440 像素桌面合成结果页截图已审阅，未见明显重叠或裁切，但不等于移动端、所有状态或无障碍验收。本机 Chromium 仍受 socket 限制，不能把远程通过误称为本机通过。Windows 原生支持未纳入此版本，macOS/WSL 未验收。

@@ -2,57 +2,44 @@
 
 This record describes actual execution, not planned coverage.
 
-## Passed locally
+## v0.2 verified in GitHub Actions
 
-Environment: Linux sandbox, Python 3.12. Direct dependency versions match requirements.txt.
+Source commit: `cc480bae1628ef2371b1a528573657153dc68b65`.
+[Verified run](https://github.com/zihaox-del/open-source-lab/actions/runs/40049894178).
 
-- `python -m unittest discover -s tests -v`: **21 discovered, 20 passed, 1 explicitly skipped**. The skipped test requires a real Chromium browser.
-- `python -m compileall -q websheet tests`: passed.
-- `python scripts/demo.py`: **30/30 synthetic pages succeeded, 0 failures, XLSX contains 30 data rows + header**.
-- Frontend extracted JavaScript: `node --check` passed.
-- Independent review exercised duplicate/resume behavior, hostile selectors, formula export and XML controls.
+- Linux / Python 3.11, 3.12 and 3.13: offline tests passed (43 discovered, 39 passed, 4 explicit browser skips), compilation passed and the synthetic export demo completed 30/30 pages with zero failures.
+- A separate Python 3.12 job installed official Playwright Chromium and enabled `WEBSHEET_BROWSER_TEST=1`: **all 43 tests passed, no skips**.
+- Real Chromium executed bundled JavaScript on 30 synthetic pages. Three additional dashboard tests served the actual FastAPI app on localhost and exercised real DOM interaction: no-CSS selection, preview/confirmation, repeated start, refresh during background work, draft cancellation, pause/resume, persistent history, history switching during a run, browser Back/Forward and actual CSV/XLSX download contents.
+- Tests did not substitute API responses or browser results. Synthetic fetches use a 60 ms delay to make progress and pause observable; non-demo fetches are rejected, key-like environment variables are removed and dashboard browser requests are restricted to localhost.
+- Guided extraction and durability tests cover text-only candidates, bounded selectors, same-origin link discovery/deduplication/caps, malformed URLs, concurrent starts/creates, idempotency, migrations, row-boundary pause/resume, crash recovery and worker-owned browser cleanup.
 
-TestClient drives real application routes and SQLite in-process, without a listening network socket. Fetch security tests use controlled mocks, not live external traffic. DeepSeek tests use `httpx.MockTransport`; no key, paid API call or real model response was used.
+## Desktop screenshot review
 
-## Passed in GitHub Actions
+The run produced `synthetic-dashboard-evidence` (artifact ID `12542693927`, three-day retention). Its ZIP was downloaded and SHA-256 verified as `8fe092f391d5313225554b16810694a65ee13951251d50f8f28b3567c2b80143`.
 
-Commit: `0158cb5b27ce2b44f4fb3d1d31f7b1629f38ba34`.
-[Verified run](https://github.com/zihaox-del/open-source-lab/actions/runs/40048939225).
+The actual 1440-pixel-wide desktop synthetic-result screenshot was visually reviewed: Chinese labels are readable, no obvious overlap/clipping was observed, and completed rows, history and download controls are coherent. This is acceptance of that captured state, not every viewport or interaction state. The first screenshot caught the 0.3-second progress-bar transition mid-frame despite 30/30 completion; the screenshot test now waits for the bar to reach full width and disables animations for capture.
 
-- Linux / Python 3.11, 3.12 and 3.13: offline tests, compile checks and 30-page synthetic export demo passed.
-- Separate Python 3.12 browser job installed official Playwright Chromium and set `WEBSHEET_BROWSER_TEST=1`: **21 tests passed, no skips**.
-- The real Chromium test executed JavaScript and extracted the expected rendered text on all 30 bundled synthetic pages. Page network access remained blocked; no external website or paid model was accessed by tests.
-- This verifies the renderer, not dashboard clicks, screenshots, accessibility or compatibility with arbitrary public sites.
-- Local wheel packaging also succeeded with `python -m pip wheel --no-deps --no-build-isolation .`; no package was uploaded to a package index.
+## Local checks
 
-## Blocked or not verified
+Linux sandbox / Python 3.12, direct dependency versions matching requirements.txt:
 
-- **Local browser environment:** Chromium failed before navigation because the environment denied `socket()` in `process_singleton_posix.cc` (`Operation not permitted`). An ordinary writable HOME/XDG configuration removed a separate crashpad directory issue but did not remove the socket restriction. No security restriction was bypassed. No browser assertion or screenshot was completed locally. The renderer assertion subsequently passed in GitHub Actions as recorded above; dashboard visual QA remains outstanding.
-- **Real public HTTPS extraction:** a read-only `example.com` attempt could not resolve DNS in this sandbox. A permitted escalation path failed in the environment wrapper before execution. Public-network extraction is therefore unverified here.
-- **CI scope:** the linked remote run passed. CI uses synthetic pages and mocked model responses, not live public extraction or paid API calls.
-- **Platforms:** Linux/Python 3.11–3.13 passed remotely; only Python 3.12 was tested locally. macOS remains untested. Native Windows is unsupported.
-- **Visual QA:** dashboard HTML/CSS and interaction code were reviewed, but a browser screenshot/layout/accessibility check remains outstanding.
+- 43 tests discovered, 39 passed, 4 explicitly skipped. Local Chromium launch failed before navigation because socket creation is denied; no local browser pass is claimed.
+- `python -m compileall -q websheet tests`, extracted frontend `node --check`, `python scripts/demo.py` and `python -m websheet.preflight` passed.
+- The synthetic demo exported 30 data rows plus a header to XLSX. API checks use TestClient and SQLite in-process.
+- DeepSeek checks use `httpx.MockTransport`; no real key, paid call or real model response was used.
+- v0.1 wheel packaging passed locally with `python -m pip wheel --no-deps --no-build-isolation .`; no package-index upload occurred. This is not a claim of v0.2 installer acceptance.
 
-## Next acceptance checks in a browser-capable environment
+## Remaining limitations and acceptance work
 
-1. Install pinned requirements and official Chromium; start `python -m websheet` on loopback.
-2. Run the 30-page static synthetic demo. Preview and confirm; ensure 30 success rows and both downloads.
-3. Edit a selector after preview: confirmation must reset and batch creation stay disabled.
-4. Reload while a task is pending: restore the same task ID and resume only pending rows; completed rows must remain unchanged.
-5. Exercise browser-demo through the dashboard with `#rendered`. The lower-level opt-in Chromium test already passed in CI; dashboard interaction still needs acceptance.
-6. Confirm browser-demo rejects external URLs, then test an authorized public static HTTPS sample without credentials or private data.
-7. Inspect desktop/mobile layout, long errors, network failure recovery, double clicks and keyboard navigation.
+- **Live websites:** a previous read-only example.com attempt could not resolve DNS in the local environment. CI uses synthetic pages and controlled mocks, not live public extraction. Arbitrary website compatibility is unverified.
+- **Public dynamic pages:** unsupported. Browser-demo only renders bundled synthetic content with page network access blocked. Logins, CAPTCHA bypass and remote multi-user hosting remain out of scope.
+- **Visual/accessibility coverage:** one desktop result state was reviewed. Mobile/narrow layouts, keyboard/screen-reader accessibility, long-error states and broader visual regression coverage remain unverified.
+- **Platforms:** Linux/Python 3.11–3.13 passed remotely; Python 3.12 passed locally. macOS and WSL remain unverified; native Windows is unsupported.
+- **AI:** no live DeepSeek call or billing flow was tested. Sending a page summary remains an explicit user action; model output still requires preview and confirmation.
+- **Security:** no independent penetration audit or general-purpose public-browser isolation certification has been performed.
 
-Do not remove these limitations until the corresponding checks have actually passed.
+## Earlier baseline
 
+The v0.1 renderer and Python matrix passed at `0158cb5b27ce2b44f4fb3d1d31f7b1629f38ba34` ([run](https://github.com/zihaox-del/open-source-lab/actions/runs/40048939225)): 21 tests with no skips in its Chromium job. That baseline did not verify the dashboard workflows subsequently covered above.
 
-## v0.2 local acceptance pass (not yet CI-verified)
-
-- `python -m unittest discover -s tests -v`: 43 discovered, 39 passed, 4 explicitly skipped (renderer plus three actual dashboard browser tests).
-- New tests cover text-only candidate discovery, bounded repeated-sibling selectors, same-origin link discovery/deduplication/cap, malformed URLs, async API flow, persistent history, concurrent/repeated start, atomic idempotent creation, row-boundary pause/resume, migrations and worker-owned browser lifecycle.
-- `python -m compileall -q websheet tests`, extracted `node --check`, `python scripts/demo.py` and `python -m websheet.preflight` passed locally.
-- The new opt-in dashboard tests serve the actual FastAPI app on localhost and use real Playwright DOM interactions. They exercise no-CSS choice, cancel, preview/review, repeated clicks, refresh during background work, history switching, browser Back/Forward, pause/resume and both downloaded file contents. No API response or browser result is substituted.
-- A 60 ms delay is applied to genuine synthetic page reads in the dashboard test server solely to expose pause/progress deterministically; non-demo fetches are rejected, API-key-like environment values are removed and browser outbound requests are restricted to localhost.
-- Actual local dashboard browser launch was attempted and failed before navigation at Chromium process socket creation (`Operation not permitted`). These tests have not passed locally. No dashboard screenshot was produced or visually reviewed.
-- CI now uploads a synthetic-only dashboard screenshot with three-day retention if the real test creates one. Passing the new CI tests and inspecting that image remain required before claiming v0.2 dashboard acceptance.
-- Windows remains unsupported; macOS and WSL remain unverified. No live website or paid model call was made for v0.2.
+Do not remove remaining limitations until the corresponding checks have actually passed.
